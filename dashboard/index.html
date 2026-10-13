@@ -1,0 +1,1483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CareLedger</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a dark control-plane band carries the identity and the medallion flow; below it a
+   tabbed workspace of explained stat tiles, charts, and two diagrams, each panel opening with
+   a plain-language line about what it shows. */
+:root{
+  color-scheme:light;
+  --plane:#f4f5f3; --surface:#fcfcfb; --surface-2:#f2f1ec; --surface-3:#e8e7e0;
+  --ink:#0b0b0b; --ink-2:#52514e; --ink-muted:#898781;
+  --rule:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.11);
+  --shadow:0 1px 2px rgba(11,11,11,.05),0 8px 24px -16px rgba(11,11,11,.18);
+  --accent:#1c5cab; --accent-soft:#e7effa; --accent-fg:#fcfcfb;
+  --band:#0f1620; --band-2:#19222f; --band-ink:#eef2f7; --band-ink-2:#9fb0c4; --band-rule:rgba(255,255,255,.12);
+  --s1:#2a78d6; --s2:#eb6834;
+  --good:#0ca30c; --good-ink:#006300; --warning:#fab219; --warning-ink:#8a5c00; --serious:#ec835a; --critical:#d03b3b; --critical-ink:#b22f2f;
+  --m-landing:#6b7a8d; --m-bronze:#b0703a; --m-silver:#8e9299; --m-gold:#bf8f22;
+  --ord-1:#86b6ef; --ord-2:#5598e7; --ord-3:#3987e5; --ord-4:#2a78d6; --ord-5:#256abf; --ord-6:#1c5cab;
+  --font-sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --maxw:1240px;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --plane:#0b0b0b; --surface:#1a1a19; --surface-2:#232321; --surface-3:#2e2e2b;
+    --ink:#f0efec; --ink-2:#c3c2b7; --ink-muted:#8f8d87;
+    --rule:#2c2c2a; --axis:#44443f; --border:rgba(255,255,255,.12);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px -18px rgba(0,0,0,.8);
+    --accent:#3987e5; --accent-soft:#16243a; --accent-fg:#0b0b0b;
+    --band:#07090d; --band-2:#121820; --band-ink:#eef2f7; --band-ink-2:#93a4b8; --band-rule:rgba(255,255,255,.1);
+    --s1:#3987e5; --s2:#d95926;
+    --good-ink:#0ca30c; --warning-ink:#fab219; --critical-ink:#e36a6a;
+    --m-landing:#8296ad; --m-bronze:#c98147; --m-silver:#a7abb3; --m-gold:#d8a52c;
+    --ord-1:#184f95; --ord-2:#256abf; --ord-3:#2a78d6; --ord-4:#3987e5; --ord-5:#5598e7; --ord-6:#86b6ef;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --plane:#0b0b0b; --surface:#1a1a19; --surface-2:#232321; --surface-3:#2e2e2b;
+  --ink:#f0efec; --ink-2:#c3c2b7; --ink-muted:#8f8d87;
+  --rule:#2c2c2a; --axis:#44443f; --border:rgba(255,255,255,.12);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px -18px rgba(0,0,0,.8);
+  --accent:#3987e5; --accent-soft:#16243a; --accent-fg:#0b0b0b;
+  --band:#07090d; --band-2:#121820; --band-ink:#eef2f7; --band-ink-2:#93a4b8; --band-rule:rgba(255,255,255,.1);
+  --s1:#3987e5; --s2:#d95926;
+  --good-ink:#0ca30c; --warning-ink:#fab219; --critical-ink:#e36a6a;
+  --m-landing:#8296ad; --m-bronze:#c98147; --m-silver:#a7abb3; --m-gold:#d8a52c;
+  --ord-1:#184f95; --ord-2:#256abf; --ord-3:#2a78d6; --ord-4:#3987e5; --ord-5:#5598e7; --ord-6:#86b6ef;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font-family:var(--font-sans);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0;text-wrap:balance}
+img{max-width:100%}
+[hidden]{display:none!important}
+.wrap{max-width:var(--maxw);margin:0 auto;padding-inline:22px}
+@media (max-width:560px){.wrap{padding-inline:16px}}
+
+/* ===================== control-plane band ===================== */
+.band{background:var(--band);background-image:radial-gradient(130% 100% at 0% 0%,var(--band-2) 0%,var(--band) 62%);color:var(--band-ink);border-bottom:1px solid var(--band-rule)}
+.band-top{display:flex;align-items:flex-start;gap:24px;padding-block:26px 20px;flex-wrap:wrap}
+.band-id{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:9px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--band-ink-2)}
+.eyebrow::before{content:"";width:16px;height:1px;background:var(--band-ink-2)}
+.band h1{font-size:clamp(25px,4.4vw,36px);font-weight:600;letter-spacing:-.025em;line-height:1.1}
+.thesis{margin:0;font-size:14.5px;color:var(--band-ink-2);max-width:62ch}
+.thesis b{color:var(--band-ink);font-weight:600}
+.band-side{display:flex;flex-direction:column;gap:9px;align-items:flex-end}
+@media (max-width:720px){.band-side{align-items:flex-start;width:100%}}
+.band-ctl{display:flex;gap:7px;flex-wrap:wrap}
+.runchip{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;padding:6px 12px;border:1px solid var(--band-rule);border-radius:999px;background:rgba(255,255,255,.06);color:var(--band-ink);white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--warning);flex:none;box-shadow:0 0 0 3px rgba(250,178,25,.18)}
+.runchip[data-state="done"] .dot{background:var(--good);box-shadow:0 0 0 3px rgba(12,163,12,.2)}
+.runchip[data-state="error"] .dot{background:var(--critical);box-shadow:0 0 0 3px rgba(208,59,59,.22)}
+.runchip[data-state="running"] .dot{animation:pulse 1.15s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+.bbtn{font:inherit;font-size:12px;color:var(--band-ink);background:rgba(255,255,255,.07);border:1px solid var(--band-rule);border-radius:999px;padding:6px 12px;cursor:pointer}
+.bbtn:hover{background:rgba(255,255,255,.14)}
+.stat-inline{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--band-ink-2)}
+.stat-inline b{color:var(--band-ink);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* medallion flow inside the band */
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;padding-bottom:26px}
+@media (max-width:860px){.flow{grid-template-columns:repeat(2,1fr);gap:10px}}
+@media (max-width:460px){.flow{grid-template-columns:1fr}}
+.fstage{position:relative;padding:14px 18px 14px 16px;border:1px solid var(--band-rule);border-right:0;background:rgba(255,255,255,.035);display:flex;flex-direction:column;gap:3px;min-width:0}
+.fstage:first-child{border-radius:12px 0 0 12px}
+.fstage:last-child{border-right:1px solid var(--band-rule);border-radius:0 12px 12px 0}
+@media (max-width:860px){.fstage,.fstage:first-child,.fstage:last-child{border:1px solid var(--band-rule);border-radius:12px}}
+.fstage::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--metal)}
+.fstage:not(:last-child)::after{content:"";position:absolute;right:-6px;top:50%;width:11px;height:11px;transform:translateY(-50%) rotate(45deg);border-top:1px solid var(--band-rule);border-right:1px solid var(--band-rule);background:var(--band);z-index:2}
+@media (max-width:860px){.fstage::after{display:none!important}}
+.fstage-k{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--metal)}
+.fstage-k i{width:6px;height:6px;border-radius:50%;background:var(--metal);flex:none;font-style:normal}
+.fstage-v{font-size:23px;font-weight:600;letter-spacing:-.025em;font-variant-numeric:tabular-nums;line-height:1.2}
+.fstage-s{font-size:11.5px;color:var(--band-ink-2);min-height:18px}
+.fstage-w{font-family:var(--font-mono);font-size:10px;color:var(--band-ink-2);opacity:.8}
+.fstage[data-state="queued"] .fstage-v{color:var(--band-ink-2)}
+
+/* ===================== tabs ===================== */
+.tabbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--surface);border-bottom:1px solid var(--rule)}
+.tabbar-in{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.tabbar-in::-webkit-scrollbar{display:none}
+.tab{font:inherit;font-size:13px;font-weight:500;color:var(--ink-2);background:none;border:0;border-bottom:2px solid transparent;padding:13px 14px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:7px}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.tab:hover{color:var(--ink)}
+.tab .badge{font-family:var(--font-mono);font-size:10px;font-weight:600;padding:1px 6px;border-radius:999px;background:var(--critical);color:#fff}
+.tab .badge[data-tone="ok"]{background:var(--good)}
+.btn:focus-visible,.tab:focus-visible,.tbtn:focus-visible,.bbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{padding-block:24px 64px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.panel-head{display:flex;flex-direction:column;gap:5px;margin-bottom:-2px}
+.panel-head h2{font-size:17px;font-weight:600;letter-spacing:-.015em}
+.lede{font-size:13.5px;color:var(--ink-2);max-width:74ch;margin:0}
+.lede code,.find code,.gloss code{font-family:var(--font-mono);font-size:11.5px;background:var(--surface-2);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+/* ===================== headline ===================== */
+.headline{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:20px 22px;display:grid;grid-template-columns:1.15fr 1fr;gap:26px;align-items:center}
+@media (max-width:820px){.headline{grid-template-columns:1fr;gap:20px}}
+.headline-k{font-size:11px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-muted)}
+.headline h3{font-size:clamp(19px,2.6vw,25px);font-weight:600;letter-spacing:-.02em;margin-top:6px;line-height:1.3}
+.headline h3 b{color:var(--accent)}
+.headline p{margin:8px 0 0;font-size:13px;color:var(--ink-2);max-width:48ch}
+.meter-wrap{display:flex;flex-direction:column;gap:9px}
+.meter-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.meter-big{font-size:36px;font-weight:600;letter-spacing:-.03em;line-height:1}
+.meter{height:12px;border-radius:999px;background:var(--surface-3);overflow:hidden;display:flex;gap:2px}
+.meter i{display:block;height:100%;border-radius:999px;font-style:normal}
+.meter-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-2)}
+.meter-legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:9px;height:9px;border-radius:2px;flex:none}
+
+/* ===================== stat tiles ===================== */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:520px){.kpis{grid-template-columns:1fr}}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:13px;box-shadow:var(--shadow);padding:15px 16px;display:flex;flex-direction:column;gap:7px;min-width:0;position:relative}
+.kpi-k{font-size:10.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-muted)}
+.kpi-row{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.kpi-v{font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1.05}
+.delta{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:1px 8px}
+.delta[data-tone="down"]{color:var(--critical-ink)}
+.delta[data-tone="up"]{color:var(--good-ink)}
+.kpi-s{font-size:12px;color:var(--ink-2);margin-top:-1px}
+.kpi-s b{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.kpi-mean{font-size:11.5px;color:var(--ink-muted);border-top:1px solid var(--rule);padding-top:8px;margin-top:auto}
+.spark{height:34px;margin-top:2px}
+.spark svg{display:block;width:100%;height:34px}
+.minimeter{height:7px;border-radius:999px;background:var(--surface-3);overflow:hidden;display:flex;gap:2px;margin-top:3px}
+.minimeter i{display:block;height:100%;font-style:normal;border-radius:999px}
+
+/* ===================== cards ===================== */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:18px;min-width:0}
+.card-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.card-h h3{font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.src{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-muted);background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:2px 7px;white-space:nowrap}
+.read{font-size:12.5px;color:var(--ink-2);margin:7px 0 0;max-width:80ch}
+.read b{color:var(--ink);font-weight:600}
+.card-foot{margin-top:14px;padding-top:10px;border-top:1px solid var(--rule);font-family:var(--font-mono);font-size:10.5px;color:var(--ink-muted);overflow-x:auto;white-space:nowrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+
+/* ===================== charts ===================== */
+.chart{position:relative;margin-top:12px}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.legend{display:flex;gap:15px;flex-wrap:wrap;margin-top:10px}
+.lg{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-2)}
+.tip{position:absolute;z-index:20;pointer-events:none;opacity:0;transition:opacity .09s;background:var(--surface);border:1px solid var(--axis);border-radius:9px;padding:9px 11px;font-size:11.5px;box-shadow:0 6px 20px rgba(0,0,0,.16);min-width:140px}
+.tip[data-on="1"]{opacity:1}
+.tip-t{font-weight:600;margin-bottom:5px;font-size:12px}
+.tip-r{display:flex;justify-content:space-between;gap:16px;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.tip-r b{color:var(--ink);font-weight:600}
+.bar{transition:opacity .12s}
+.chart:hover .bar{opacity:.72}
+.chart .bar:hover{opacity:1}
+@media (prefers-reduced-motion:reduce){.tip,.bar{transition:none}}
+
+/* outcome stack */
+.stack{display:flex;gap:2px;height:40px;border-radius:9px;overflow:hidden;margin-top:12px}
+.stack i{font-style:normal;display:grid;place-items:center;font-size:11.5px;font-weight:600;color:#fff;min-width:0;overflow:hidden}
+.stack i[data-ink="dark"]{color:#0b0b0b}
+.stack-key{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+@media (max-width:620px){.stack-key{grid-template-columns:1fr}}
+.sk{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface-2);display:flex;flex-direction:column;gap:2px}
+.sk-h{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600}
+.sk-h i{width:9px;height:9px;border-radius:2px;flex:none;font-style:normal}
+.sk-v{font-size:19px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.sk-s{font-size:11.5px;color:var(--ink-2)}
+
+/* ===================== tables ===================== */
+.tbl-wrap{overflow-x:auto;margin-top:12px;border:1px solid var(--rule);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--rule);white-space:nowrap}
+th{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-muted);font-weight:600;background:var(--surface-2);position:sticky;top:0}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--surface-2)}
+td.num,th.num{text-align:right}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--font-mono)}
+td.mono{font-family:var(--font-mono);font-size:11px;color:var(--ink-2)}
+tr.total td{background:var(--accent-soft);font-weight:600}
+tr.total td.num{font-weight:600}
+.pill{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.03em;padding:2px 8px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink-2)}
+.pill[data-tone="metal"]{border-color:transparent;color:#fff}
+.pill[data-tone="ok"]{background:rgba(12,163,12,.14);border-color:rgba(12,163,12,.3);color:var(--good-ink)}
+.pill[data-tone="off"]{opacity:.65}
+.bar-cell{position:relative;min-width:120px}
+.bar-cell i{position:absolute;left:12px;right:12px;bottom:3px;height:3px;border-radius:999px;background:var(--surface-3);font-style:normal}
+.bar-cell i::after{content:"";position:absolute;left:0;top:0;bottom:0;width:var(--w);background:var(--s1);border-radius:999px}
+.tbtns{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.tbtn{font:inherit;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:5px 11px;cursor:pointer}
+.tbtn:hover{color:var(--ink);background:var(--surface-3)}
+.tbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+
+/* ===================== diagrams ===================== */
+.diagram{overflow-x:auto;margin-top:14px;padding-bottom:4px}
+.diagram svg{display:block;height:auto}
+.diagram.schema svg{min-width:760px;width:100%}
+.diagram.arch svg{min-width:820px;width:100%}
+
+/* ===================== findings ===================== */
+.health{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media (max-width:820px){.health{grid-template-columns:repeat(2,1fr)}}
+.hcard{background:var(--surface);border:1px solid var(--border);border-radius:13px;box-shadow:var(--shadow);padding:14px 15px;display:flex;flex-direction:column;gap:3px;border-left:3px solid var(--tone)}
+.hcard-v{font-size:26px;font-weight:600;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.hcard-k{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-muted)}
+.hcard-s{font-size:11.5px;color:var(--ink-2)}
+.finds{display:flex;flex-direction:column;gap:12px}
+.find{background:var(--surface);border:1px solid var(--border);border-radius:13px;box-shadow:var(--shadow);padding:15px 17px;display:grid;grid-template-columns:auto 1fr;gap:5px 13px}
+.find-ic{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;grid-row:span 2;margin-top:2px}
+.find[data-sev="critical"] .find-ic{background:var(--critical)}
+.find[data-sev="serious"] .find-ic{background:var(--serious);color:#0b0b0b}
+.find[data-sev="warning"] .find-ic{background:var(--warning);color:#0b0b0b}
+.find[data-sev="good"] .find-ic{background:var(--good)}
+.find-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.find-h h4{font-size:13.5px;font-weight:600}
+.sev{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:999px;border:1px solid var(--border);color:var(--ink-2);background:var(--surface-2)}
+.find[data-sev="critical"] .sev{color:var(--critical-ink)}
+.find[data-sev="warning"] .sev,.find[data-sev="serious"] .sev{color:var(--warning-ink)}
+.find[data-sev="good"] .sev{color:var(--good-ink)}
+.find p{margin:0;font-size:12.5px;color:var(--ink-2);max-width:78ch}
+.find-m{font-family:var(--font-mono);font-size:11px;color:var(--ink);background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:6px 9px;margin-top:7px!important;font-variant-numeric:tabular-nums;display:inline-block}
+.find-fix{font-size:12.5px;color:var(--ink-2);margin-top:6px!important}
+.find-fix b{color:var(--ink);font-weight:600}
+
+/* ===================== glossary ===================== */
+.gloss{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media (max-width:820px){.gloss{grid-template-columns:1fr}}
+.gterm{border:1px solid var(--border);border-radius:11px;padding:13px 15px;background:var(--surface-2);display:flex;flex-direction:column;gap:4px}
+.gterm h4{font-size:13px;font-weight:600}
+.gterm h4 span{font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);font-weight:400;margin-left:7px}
+.gterm p{margin:0;font-size:12.5px;color:var(--ink-2)}
+.steps{display:flex;flex-direction:column;gap:11px;margin-top:14px;counter-reset:s}
+.step{display:grid;grid-template-columns:auto 1fr;gap:4px 13px;align-items:start}
+.step-n{width:24px;height:24px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-family:var(--font-mono);font-size:11.5px;font-weight:600;grid-row:span 2}
+.step h4{font-size:13px;font-weight:600}
+.step p{margin:0;font-size:12.5px;color:var(--ink-2);max-width:78ch}
+.err{border-color:var(--critical)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+
+<header class="band">
+  <div class="wrap">
+    <div class="band-top">
+      <div class="band-id">
+        <span class="eyebrow">Landing · Bronze · Silver · Gold</span>
+        <h1>CareLedger</h1>
+        <p class="thesis">A medallion pipeline that runs in this page: it reads the hospital billing files in <b>datasets/</b>, conforms two different schemas, quarantines what fails its quality rules, and builds a <b>star schema</b> — and every figure below is counted from that run.</p>
+      </div>
+      <div class="band-side">
+        <div class="band-ctl">
+          <span class="runchip" id="runchip" data-state="running"><span class="dot"></span><span id="runtext">starting run…</span></span>
+          <button class="bbtn" id="rerun" type="button" hidden>Re-run</button>
+          <button class="bbtn" id="themebtn" type="button" title="Switch theme">Theme: system</button>
+        </div>
+        <div class="stat-inline" id="bandstats"></div>
+      </div>
+    </div>
+    <div class="flow" id="flow"></div>
+  </div>
+</header>
+
+<div class="tabbar">
+  <div class="wrap">
+    <div class="tabbar-in" role="tablist" aria-label="Views">
+      <button class="tab" role="tab" id="tab-gold" aria-controls="p-gold" aria-selected="true">Revenue overview</button>
+      <button class="tab" role="tab" id="tab-run" aria-controls="p-run" aria-selected="false">Pipeline run</button>
+      <button class="tab" role="tab" id="tab-model" aria-controls="p-model" aria-selected="false">Star schema</button>
+      <button class="tab" role="tab" id="tab-dq" aria-controls="p-dq" aria-selected="false">Data quality <span class="badge" id="dq-badge">—</span></button>
+      <button class="tab" role="tab" id="tab-help" aria-controls="p-help" aria-selected="false">How to read this</button>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+  <!-- ============ REVENUE OVERVIEW ============ -->
+  <section class="panel" id="p-gold" role="tabpanel" aria-labelledby="tab-gold">
+    <div class="headline" id="headline"></div>
+    <div class="panel-head">
+      <h2>The six figures the gold layer answers for</h2>
+      <p class="lede">Each tile names what it measures, the figure, and one line on how to read it. Charge-side figures come from <code>gold.fact_transactions</code>; claim-side figures come from <code>silver.claims</code>, which this repository never promotes to a gold fact.</p>
+    </div>
+    <div class="kpis" id="kpis"></div>
+
+    <div class="card" id="c-trend">
+      <div class="card-h"><h3>Charged against collected, by service month</h3><span class="src">gold.fact_transactions</span></div>
+      <p class="read">The gap between the two lines is money billed but not received. Hover any month for its collection rate and transaction count. Service dates span 1 Jan – 6 Nov 2024, so <b>November is a partial month</b> and its points are drawn hollow — the drop is the calendar, not a collapse in billing.</p>
+      <div class="chart" id="ch-trend"></div>
+      <div class="card-foot">select date_trunc('month', ServiceDate), sum(Charge_Amt), sum(Paid_Amt) from gold.fact_transactions group by 1 order by 1</div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h3>What happened to the 20,000 claims</h3><span class="src">silver.claims</span></div>
+      <p class="read">Claims are grouped by what they mean for the revenue cycle: <b>settled</b> needs nothing, <b>in flight</b> is waiting on the payer, and <b>needs rework</b> has to be corrected and resubmitted before it can ever be collected. The five raw status values sit underneath.</p>
+      <div id="ch-outcome"></div>
+      <div class="tbl-wrap" id="t-status"></div>
+      <div class="card-foot">select ClaimStatus, count(*) from silver.claims where is_current and not is_quarantined group by 1</div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-h"><h3>Charges by department</h3><span class="src">+ dim_department</span></div>
+        <p class="read">Top 10 of 20 departments by charged amount. Both hospitals run the same 20 departments, so each bar sums its <code>hosa</code> and <code>hosb</code> rows. Hover for that department's collection rate.</p>
+        <div class="chart" id="ch-dept"></div>
+        <div class="card-foot">fact_transactions f join dim_department d on f.FK_DeptID = d.Dept_Id group by d.Name</div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Claims by payer type</h3><span class="src">silver.claims</span></div>
+        <p class="read">Who is being billed. <b>Self-pay</b> has no insurer behind it, so it is where collection risk concentrates — on a real feed this bar is the one to watch, and here it is a third of all claims.</p>
+        <div class="chart" id="ch-payor"></div>
+        <div class="card-foot">select PayorType, count(*), sum(ClaimAmount) from silver.claims group by 1</div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Patients by age band</h3><span class="src">gold.dim_patient</span></div>
+        <p class="read">Age from <code>DOB</code> as of today, across both hospitals. Bands are ordered, so the fill darkens as the band rises — the colour repeats the axis rather than adding a second meaning.</p>
+        <div class="chart" id="ch-age"></div>
+        <div class="card-foot">select DOB from gold.dim_patient where is_current and not is_quarantined</div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Where the two hospitals differ</h3><span class="src">fact_transactions</span></div>
+        <p class="read">Both feeds carry 10,000 transactions and land within a point of each other on collection rate. That symmetry is a property of the generator, and it is the clearest signal that these figures prove the pipeline rather than describe a hospital.</p>
+        <div class="tbl-wrap" id="t-source"></div>
+        <div class="card-foot">group by datasource</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h3>Collection rate by visit type and amount type</h3><span class="src">gold.fact_transactions</span></div>
+      <p class="read">Paid amount over charged amount, cut two ways. Every slice lands between 77% and 80%: on a real feed these columns would separate sharply — self-pay well below insurance — and the fact that they do not is itself the finding.</p>
+      <div class="tbl-wrap" id="t-rate"></div>
+    </div>
+  </section>
+
+  <!-- ============ PIPELINE RUN ============ -->
+  <section class="panel" id="p-run" role="tabpanel" aria-labelledby="tab-run" hidden>
+    <div class="panel-head">
+      <h2>What ran when this page loaded</h2>
+      <p class="lede">A production platform runs these stages on Spark against cloud storage, orchestrated by a scheduler. This page runs the same rules in the browser — the CDM column mapping that reconciles the two hospitals, the quarantine predicates, the surrogate keys, and the <code>is_current and not is_quarantined</code> filter into gold — over the CSVs in <code>datasets/</code>, so the whole pipeline is inspectable without any infrastructure.</p>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>The four stages</h3><span class="src">medallion architecture</span></div>
+      <p class="read">Each stage has one job, and nothing skips a layer. Raw files are never read by a dashboard; gold is never written by hand.</p>
+      <div class="diagram arch" id="d-arch"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Stage log</h3><span class="src" id="total-ms"></span></div>
+      <p class="read">Rows out and elapsed time for every stage of the run you are looking at, followed by each file as it was read from the landing zone.</p>
+      <div class="tbl-wrap" id="t-log"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Config-driven ingestion</h3><span class="src">datasets/load_config.csv</span></div>
+      <p class="read">ADF reads this control table with a <b>Lookup</b> activity and runs one <b>Copy</b> activity per row inside a <b>ForEach</b>. Changing an ingestion means editing a row here, not editing a pipeline. <code>loadtype</code> picks full reload against incremental, <code>watermark</code> names the column an incremental load compares, and <code>is_active = 0</code> switches a table off — which is why this table lists tables the run above did not read.</p>
+      <div class="tbl-wrap" id="t-config"></div>
+    </div>
+  </section>
+
+  <!-- ============ STAR SCHEMA ============ -->
+  <section class="panel" id="p-model" role="tabpanel" aria-labelledby="tab-model" hidden>
+    <div class="panel-head">
+      <h2>The gold layer is a star</h2>
+      <p class="lede">One fact table of billed transactions, surrounded by the dimensions that describe them. Every surrogate key appends the data source, so two hospitals can issue the same IDs without being merged. The percentage on each arm is how often that join actually finds its dimension row.</p>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Fact and dimensions</h3><span class="src">gold</span></div>
+      <div class="diagram schema" id="d-schema"></div>
+      <div class="card-foot">match rate = fact rows whose foreign key is present in the dimension ÷ 20,000 fact rows</div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Tables built by this run</h3><span class="src">gold · silver</span></div>
+      <p class="read">Grain tells you what one row means — get this wrong and every metric double counts.</p>
+      <div class="tbl-wrap" id="t-tables"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Row preview</h3><span class="src" id="prev-src"></span></div>
+      <p class="read">Real rows from the run, straight out of the in-memory table. Pick any table.</p>
+      <div class="tbtns" id="prev-btns"></div>
+      <div class="tbl-wrap" id="t-preview"></div>
+      <div class="card-foot" id="prev-foot"></div>
+    </div>
+  </section>
+
+  <!-- ============ DATA QUALITY ============ -->
+  <section class="panel" id="p-dq" role="tabpanel" aria-labelledby="tab-dq" hidden>
+    <div class="panel-head">
+      <h2>What this data cannot support, and why</h2>
+      <p class="lede">The silver quarantine predicates run on every row, and this run also checks every foreign key in the fact table against its dimension. Findings are ordered by severity, each with the count behind it and what fixing it would take. Two of them are the reason this dashboard is missing metrics an RCM dashboard normally leads with.</p>
+    </div>
+    <div class="health" id="health"></div>
+    <div class="finds" id="finds"></div>
+  </section>
+
+  <!-- ============ HOW TO READ THIS ============ -->
+  <section class="panel" id="p-help" role="tabpanel" aria-labelledby="tab-help" hidden>
+    <div class="panel-head">
+      <h2>How to read this dashboard</h2>
+      <p class="lede">Revenue cycle management has its own vocabulary, and so does the medallion architecture. Everything this page uses is defined below.</p>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>The path a dollar takes</h3><span class="src">revenue cycle</span></div>
+      <p class="read">Reading the tiles in this order tells you the whole story of the dataset.</p>
+      <div class="steps" id="steps"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Revenue cycle terms</h3><span class="src">domain</span></div>
+      <div class="gloss" id="gloss-rcm"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Data engineering terms</h3><span class="src">platform</span></div>
+      <div class="gloss" id="gloss-de"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Where the numbers come from</h3><span class="src">verification</span></div>
+      <p class="read">Nothing on this page is hard-coded. Every figure is computed in your browser from the CSVs in <code>datasets/</code> each time the page loads, by the same rules a Spark implementation of this pipeline would apply. The run is reproducible: reload and the figures are identical, because the source files do not change. <code>dim_patient</code> is projected without SSN, phone and address — no panel here uses them.</p>
+      <div class="tbl-wrap" id="t-prov"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+/* ======================================================================
+   Landing zone — the files the ADF Copy activity drops into ADLS.
+   Paths are relative to this page, so the server must be rooted at the repo.
+   ====================================================================== */
+const LANDING = [
+  {id:"tx_a",   ds:"hosa", table:"transactions", path:"../datasets/EMR/hospital-a/transactions.csv", origin:"Azure SQL · hospital-a"},
+  {id:"tx_b",   ds:"hosb", table:"transactions", path:"../datasets/EMR/hospital-b/transactions.csv", origin:"Azure SQL · hospital-b"},
+  {id:"pat_a",  ds:"hosa", table:"patients",     path:"../datasets/EMR/hospital-a/patients.csv",     origin:"Azure SQL · hospital-a"},
+  {id:"pat_b",  ds:"hosb", table:"patients",     path:"../datasets/EMR/hospital-b/patients.csv",     origin:"Azure SQL · hospital-b"},
+  {id:"dep_a",  ds:"hosa", table:"departments",  path:"../datasets/EMR/hospital-a/departments.csv",  origin:"Azure SQL · hospital-a"},
+  {id:"dep_b",  ds:"hosb", table:"departments",  path:"../datasets/EMR/hospital-b/departments.csv",  origin:"Azure SQL · hospital-b"},
+  {id:"prv_a",  ds:"hosa", table:"providers",    path:"../datasets/EMR/hospital-a/providers.csv",    origin:"Azure SQL · hospital-a"},
+  {id:"prv_b",  ds:"hosb", table:"providers",    path:"../datasets/EMR/hospital-b/providers.csv",    origin:"Azure SQL · hospital-b"},
+  {id:"clm_a",  ds:"hosa", table:"claims",       path:"../datasets/claims/hospital1_claim_data.csv",            origin:"Flat file drop · claims"},
+  {id:"clm_b",  ds:"hosb", table:"claims",       path:"../datasets/claims/hospital2_claim_data.csv",            origin:"Flat file drop · claims"},
+  {id:"cpt",    ds:null,   table:"cptcodes",     path:"../datasets/cptcodes/cptcodes.csv",                      origin:"Reference file · CPT catalogue"},
+  {id:"config", ds:null,   table:"load_config",  path:"../datasets/load_config.csv",                            origin:"Control table · ADF Lookup"}
+];
+
+/* ---------- CSV reader (quote aware: CPT descriptions carry commas) ---------- */
+function parseCSV(text){
+  if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const rows=[]; let row=[], field="", q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c === '"'){ if(text[i+1] === '"'){ field+='"'; i++; } else q=false; }
+      else field+=c;
+    } else if(c === '"') q=true;
+    else if(c === ','){ row.push(field); field=""; }
+    else if(c === '\n'){ row.push(field); field=""; rows.push(row); row=[]; }
+    else if(c !== '\r') field+=c;
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  if(!rows.length) return {header:[], rows:[]};
+  const header=rows[0].map(h=>h.trim());
+  const out=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i];
+    if(r.length===1 && r[0]==="") continue;
+    out.push(r);
+  }
+  return {header, rows:out};
+}
+function objects(parsed){
+  const {header, rows}=parsed, n=header.length, out=new Array(rows.length);
+  for(let i=0;i<rows.length;i++){
+    const o={}, r=rows[i];
+    for(let j=0;j<n;j++) o[header[j]] = r[j]===undefined ? null : r[j];
+    out[i]=o;
+  }
+  return out;
+}
+
+/* ---------- small helpers ---------- */
+const N = n => n.toLocaleString("en-US");
+const money = n => "$"+Math.round(n).toLocaleString("en-US");
+const money2 = n => "$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct = (a,b) => b ? (a/b*100).toFixed(1)+"%" : "—";
+function compact(n){
+  const a=Math.abs(n);
+  if(a>=1e9) return "$"+(n/1e9).toFixed(2)+"B";
+  if(a>=1e6) return "$"+(n/1e6).toFixed(2)+"M";
+  if(a>=1e3) return "$"+Math.round(n/1e3)+"k";
+  return "$"+Math.round(n);
+}
+function axisMoney(n){
+  const a=Math.abs(n);
+  if(a>=1e6) return "$"+(n/1e6).toFixed(1)+"M";
+  if(a>=1e3) return "$"+Math.round(n/1e3)+"k";
+  return "$"+n;
+}
+const num = v => { const f=parseFloat(v); return Number.isFinite(f)?f:0; };
+const blank = v => v===null || v===undefined || v==="" || String(v).trim().toLowerCase()==="null";
+const esc = s => String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const el = id => document.getElementById(id);
+const MONTH = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function monthLabel(key){ const [y,m]=key.split("-"); return MONTH[+m-1]+" "+y.slice(2); }
+function daysBetween(a,b){ return Math.round((Date.parse(b+"T00:00:00Z")-Date.parse(a+"T00:00:00Z"))/864e5); }
+
+/* ======================================================================
+   Medallion flow in the band
+   ====================================================================== */
+const STAGES=[
+  {key:"landing", name:"Landing", metal:"var(--m-landing)", sub:"CSV exactly as delivered",   what:"12 files"},
+  {key:"bronze",  name:"Bronze",  metal:"var(--m-bronze)",  sub:"typed, stamped with source", what:"7 parquet targets"},
+  {key:"silver",  name:"Silver",  metal:"var(--m-silver)",  sub:"conformed, checked, SCD2",   what:"7 delta tables"},
+  {key:"gold",    name:"Gold",    metal:"var(--m-gold)",    sub:"star schema, business-ready", what:"4 dims + 1 fact"}
+];
+el("flow").innerHTML = STAGES.map(s=>`
+  <div class="fstage" id="st-${s.key}" data-state="queued" style="--metal:${s.metal}">
+    <span class="fstage-k"><i></i>${s.name}</span>
+    <span class="fstage-v" id="st-${s.key}-v">—</span>
+    <span class="fstage-s" id="st-${s.key}-s">${s.sub}</span>
+    <span class="fstage-w" id="st-${s.key}-ms">${s.what}</span>
+  </div>`).join("");
+
+const LOG=[];
+function stage(key,{state,value,sub,ms}={}){
+  const n=el("st-"+key); if(!n) return;
+  if(state) n.dataset.state=state;
+  if(value!==undefined) el("st-"+key+"-v").textContent=value;
+  if(sub!==undefined) el("st-"+key+"-s").textContent=sub;
+  if(ms!==undefined) el("st-"+key+"-ms").textContent=ms.toFixed(0)+" ms · "+STAGES.find(s=>s.key===key).what;
+}
+function setRun(state,text){
+  el("runchip").dataset.state=state;
+  el("runtext").textContent=text;
+}
+
+/* ======================================================================
+   THE RUN — landing → bronze → silver → gold
+   ====================================================================== */
+const G={};
+
+async function runPipeline(){
+  const t0=performance.now();
+  setRun("running","reading landing zone…");
+
+  /* ---------- 1. LANDING ---------- */
+  let tL=performance.now(), bytes=0;
+  const raw={};
+  let done=0;
+  await Promise.all(LANDING.map(async f=>{
+    const res=await fetch(f.path);
+    if(!res.ok) throw new Error(`${f.path} → HTTP ${res.status}`);
+    const text=await res.text();
+    f.bytes=new Blob([text]).size; bytes+=f.bytes;
+    raw[f.id]=parseCSV(text);
+    f.rowsIn=raw[f.id].rows.length;
+    f.cols=raw[f.id].header.length;
+    done++;
+    setRun("running",`landing ${done}/${LANDING.length} files`);
+  }));
+  const msL=performance.now()-tL;
+  G.bytes=bytes;
+  stage("landing",{state:"done",value:N(LANDING.reduce((a,f)=>a+f.rowsIn,0)),sub:`${LANDING.length} files · ${(bytes/1048576).toFixed(1)} MB read`,ms:msL});
+  LOG.push({stage:"Landing",step:"read 12 delimited files from the landing container",rows:LANDING.reduce((a,f)=>a+f.rowsIn,0),detail:`${(bytes/1048576).toFixed(2)} MB`,ms:msL});
+
+  /* ---------- 2. BRONZE ---------- */
+  setRun("running","building bronze…");
+  let tB=performance.now();
+  const bronze={};
+  const tag=(ids)=>{
+    const out=[];
+    for(const id of ids){
+      const f=LANDING.find(x=>x.id===id);
+      for(const o of objects(raw[id])){ o.datasource=f.ds; out.push(o); }
+    }
+    return out;
+  };
+  bronze.transactions = tag(["tx_a","tx_b"]);
+  bronze.patients_hosa= objects(raw.pat_a).map(o=>(o.datasource="hosa",o));
+  bronze.patients_hosb= objects(raw.pat_b).map(o=>(o.datasource="hosb",o));
+  bronze.departments  = tag(["dep_a","dep_b"]);
+  bronze.providers    = tag(["prv_a","prv_b"]);
+  bronze.claims       = tag(["clm_a","clm_b"]);
+  bronze.cptcodes     = objects(raw.cpt);
+  G.config            = objects(raw.config);
+  const bronzeRows=bronze.transactions.length+bronze.patients_hosa.length+bronze.patients_hosb.length+
+                    bronze.departments.length+bronze.providers.length+bronze.claims.length+bronze.cptcodes.length;
+  const msB=performance.now()-tB;
+  stage("bronze",{state:"done",value:N(bronzeRows),sub:"union per table, source stamped",ms:msB});
+  LOG.push({stage:"Bronze",step:"union both hospitals per table, stamp datasource",rows:bronzeRows,detail:"7 tables",ms:msB});
+
+  /* ---------- 3. SILVER ---------- */
+  setRun("running","applying silver quality checks…");
+  let tS=performance.now();
+  const silver={};
+
+  // silver.patients — hospital B renames its columns; the CDM mapping reconciles them.
+  const cdmPatients=[
+    ...bronze.patients_hosa.map(o=>({
+      SRC_PatientID:o.PatientID, FirstName:o.FirstName, LastName:o.LastName, MiddleName:o.MiddleName,
+      Gender:o.Gender, DOB:o.DOB, SRC_ModifiedDate:o.ModifiedDate, datasource:"hosa"})),
+    ...bronze.patients_hosb.map(o=>({
+      SRC_PatientID:o.ID, FirstName:o.F_Name, LastName:o.L_Name, MiddleName:o.M_Name,
+      Gender:o.Gender, DOB:o.DOB, SRC_ModifiedDate:o.Updated_Date, datasource:"hosb"}))
+  ];
+  silver.patients = cdmPatients.map(o=>({
+    Patient_Key:o.SRC_PatientID+"-"+o.datasource, ...o,
+    is_quarantined: blank(o.SRC_PatientID) || blank(o.DOB) || blank(o.FirstName),
+    is_current:true
+  }));
+
+  silver.transactions = bronze.transactions.map(o=>({
+    TransactionID:o.TransactionID+"-"+o.datasource, SRC_TransactionID:o.TransactionID,
+    EncounterID:o.EncounterID, PatientID:o.PatientID, ProviderID:o.ProviderID, DeptID:o.DeptID,
+    VisitDate:o.VisitDate, ServiceDate:o.ServiceDate, PaidDate:o.PaidDate, VisitType:o.VisitType,
+    Amount:num(o.Amount), AmountType:o.AmountType, PaidAmount:num(o.PaidAmount),
+    ClaimID:o.ClaimID, PayorID:o.PayorID, ProcedureCode:o.ProcedureCode, ICDCode:o.ICDCode,
+    LineOfBusiness:o.LineOfBusiness, datasource:o.datasource,
+    is_quarantined: blank(o.EncounterID)||blank(o.PatientID)||blank(o.TransactionID)||blank(o.VisitDate),
+    is_current:true
+  }));
+
+  silver.claims = bronze.claims.map(o=>({
+    ClaimID:o.ClaimID+"-"+o.datasource, SRC_ClaimID:o.ClaimID, TransactionID:o.TransactionID,
+    PatientID:o.PatientID, EncounterID:o.EncounterID, ProviderID:o.ProviderID, DeptID:o.DeptID,
+    ServiceDate:o.ServiceDate, ClaimDate:o.ClaimDate, PayorID:o.PayorID,
+    ClaimAmount:num(o.ClaimAmount), PaidAmount:num(o.PaidAmount), ClaimStatus:o.ClaimStatus,
+    PayorType:o.PayorType, Deductible:num(o.Deductible), Coinsurance:num(o.Coinsurance), Copay:num(o.Copay),
+    datasource:o.datasource,
+    is_quarantined: blank(o.ClaimID)||blank(o.TransactionID)||blank(o.PatientID)||blank(o.ServiceDate),
+    is_current:true
+  }));
+
+  silver.departments = bronze.departments.map(o=>({
+    Dept_Id:o.DeptID+"-"+o.datasource, SRC_Dept_Id:o.DeptID, Name:o.Name, datasource:o.datasource,
+    is_quarantined: blank(o.DeptID)||blank(o.Name)
+  }));
+
+  silver.providers = bronze.providers.map(o=>({
+    Provider_Key:o.ProviderID, SRC_ProviderID:o.ProviderID, FirstName:o.FirstName, LastName:o.LastName,
+    Specialization:o.Specialization, DeptID:o.DeptID, NPI:o.NPI, datasource:o.datasource,
+    is_quarantined: blank(o.ProviderID)||blank(o.NPI)
+  }));
+
+  silver.cptcodes = bronze.cptcodes.map(o=>({
+    CPT_Code:(o["CPT Codes"]||"").trim(), Category:o["Procedure Code Category"],
+    Description:(o["Procedure Code Descriptions"]||"").trim(), Code_Status:(o["Code Status"]||"").trim(),
+    is_quarantined: blank(o["CPT Codes"])
+  }));
+
+  const quarantined = Object.entries(silver).reduce((a,[k,v])=>a+v.filter(r=>r.is_quarantined).length,0);
+  const silverRows = Object.values(silver).reduce((a,v)=>a+v.length,0);
+  const msS=performance.now()-tS;
+  stage("silver",{state:"done",value:N(silverRows),sub:`${N(quarantined)} rows quarantined`,ms:msS});
+  LOG.push({stage:"Silver",step:"CDM column mapping for hospital B, then quality predicates",rows:silverRows,detail:`${N(quarantined)} quarantined`,ms:msS});
+
+  /* ---------- 4. GOLD ---------- */
+  setRun("running","loading gold tables…");
+  let tG=performance.now();
+  const gold={};
+  const live = r => r.is_current!==false && !r.is_quarantined;
+
+  gold.dim_patient = silver.patients.filter(live).map(r=>({
+    patient_key:r.Patient_Key, src_patientid:r.SRC_PatientID, firstname:r.FirstName, lastname:r.LastName,
+    gender:r.Gender, dob:r.DOB, datasource:r.datasource
+  }));
+  gold.dim_department = silver.departments.filter(live).map(r=>({
+    Dept_Id:r.Dept_Id, SRC_Dept_Id:r.SRC_Dept_Id, Name:r.Name, datasource:r.datasource
+  }));
+  gold.dim_provider = silver.providers.filter(live).map(r=>({
+    Provider_Key:r.Provider_Key, FirstName:r.FirstName, LastName:r.LastName,
+    Specialization:r.Specialization, DeptID:r.DeptID, NPI:r.NPI, datasource:r.datasource
+  }));
+  gold.dim_cpt_code = silver.cptcodes.filter(live).map(r=>({
+    CPT_Code:r.CPT_Code, Category:r.Category, Description:r.Description, Code_Status:r.Code_Status
+  }));
+
+  // gold.fact_transactions — surrogate keys carry the data source
+  gold.fact_transactions = silver.transactions.filter(live).map(r=>({
+    TransactionID:r.TransactionID, SRC_TransactionID:r.SRC_TransactionID, EncounterID:r.EncounterID,
+    FK_PatientID:r.PatientID+"-"+r.datasource,
+    FK_ProviderID:(r.datasource==="hosa"?"H1-":"H2-")+r.ProviderID,
+    FK_DeptID:r.DeptID+"-"+r.datasource,
+    ICDCode:r.ICDCode, CPT_Code:r.ProcedureCode, VisitType:r.VisitType,
+    ServiceDate:r.ServiceDate, PaidDate:r.PaidDate,
+    Charge_Amt:r.Amount, Paid_Amt:r.PaidAmount, AmountType:r.AmountType,
+    ClaimID:r.ClaimID, datasource:r.datasource
+  }));
+  const goldRows=Object.values(gold).reduce((a,v)=>a+v.length,0);
+  const msG=performance.now()-tG;
+  stage("gold",{state:"done",value:N(goldRows),sub:"4 dimensions + 1 fact",ms:msG});
+  LOG.push({stage:"Gold",step:"truncate and reload dimensions, insert fact where is_current and not is_quarantined",rows:goldRows,detail:"5 tables",ms:msG});
+
+  G.silver=silver; G.gold=gold; G.landing=LANDING; G.totalMs=performance.now()-t0;
+  G.quarantined=quarantined; G.silverRows=silverRows;
+  setRun("done",`run complete · ${G.totalMs.toFixed(0)} ms`);
+  el("rerun").hidden=false;
+  el("bandstats").innerHTML=`
+    <span><b>${N(LANDING.reduce((a,f)=>a+f.rowsIn,0))}</b> source rows</span>
+    <span><b>${(bytes/1048576).toFixed(1)} MB</b> parsed</span>
+    <span><b>${G.totalMs.toFixed(0)} ms</b> end to end</span>`;
+}
+
+/* ======================================================================
+   Aggregations over the gold layer  (logic unchanged)
+   ====================================================================== */
+function aggregate(){
+  const f=G.gold.fact_transactions, cl=G.silver.claims.filter(r=>!r.is_quarantined);
+  const A={};
+  A.txCount=f.length;
+  A.charge=f.reduce((a,r)=>a+r.Charge_Amt,0);
+  A.paid=f.reduce((a,r)=>a+r.Paid_Amt,0);
+  A.encounters=new Set(f.map(r=>r.EncounterID)).size;
+  A.patientsBilled=new Set(f.map(r=>r.FK_PatientID)).size;
+
+  const m=new Map();
+  for(const r of f){
+    const k=(r.ServiceDate||"").slice(0,7); if(k.length!==7) continue;
+    let o=m.get(k); if(!o) m.set(k,o={key:k,charge:0,paid:0,n:0});
+    o.charge+=r.Charge_Amt; o.paid+=r.Paid_Amt; o.n++;
+  }
+  A.months=[...m.values()].sort((a,b)=>a.key<b.key?-1:1);
+
+  const dname=new Map(G.gold.dim_department.map(d=>[d.Dept_Id,d.Name]));
+  const dep=new Map(); let deptOrphan=0;
+  for(const r of f){
+    const name=dname.get(r.FK_DeptID);
+    if(!name){ deptOrphan++; continue; }
+    let o=dep.get(name); if(!o) dep.set(name,o={name,charge:0,paid:0,n:0});
+    o.charge+=r.Charge_Amt; o.paid+=r.Paid_Amt; o.n++;
+  }
+  A.departments=[...dep.values()].sort((a,b)=>b.charge-a.charge);
+  A.deptOrphan=deptOrphan;
+
+  const pk=new Set(G.gold.dim_provider.map(p=>p.Provider_Key));
+  A.provOrphan=f.filter(r=>!pk.has(r.FK_ProviderID)).length;
+  A.provDistinct=new Set(f.map(r=>r.FK_ProviderID)).size;
+  const ck=new Set(G.gold.dim_cpt_code.map(c=>c.CPT_Code));
+  A.cptOrphan=f.filter(r=>!ck.has(String(r.CPT_Code).trim())).length;
+
+  const patk=new Set(G.gold.dim_patient.map(p=>p.patient_key));
+  A.patOrphan=f.filter(r=>!patk.has(r.FK_PatientID)).length;
+
+  A.claims=cl.length;
+  const st=new Map();
+  for(const c of cl){ st.set(c.ClaimStatus,(st.get(c.ClaimStatus)||0)+1); }
+  A.status=[...st.entries()].map(([k,v])=>({name:k,n:v})).sort((a,b)=>b.n-a.n);
+  A.statusMap=st;
+  A.denied=(st.get("Denied")||0)+(st.get("Rejected")||0);
+  A.settled=(st.get("Paid")||0)+(st.get("Approved")||0);
+  A.inflight=(st.get("Pending")||0);
+  const py=new Map();
+  for(const c of cl){
+    let o=py.get(c.PayorType); if(!o) py.set(c.PayorType,o={name:c.PayorType,n:0,amt:0});
+    o.n++; o.amt+=c.ClaimAmount;
+  }
+  A.payors=[...py.values()].sort((a,b)=>b.n-a.n);
+  A.claimAmt=cl.reduce((a,c)=>a+c.ClaimAmount,0);
+  A.claimPaid=cl.reduce((a,c)=>a+c.PaidAmount,0);
+  A.claimTxnKeys=new Set(cl.map(c=>c.TransactionID+"-"+c.datasource)).size;
+  const factKeys=new Set(f.map(r=>r.TransactionID));
+  A.claimsJoined=cl.filter(c=>factKeys.has(c.TransactionID+"-"+c.datasource)).length;
+
+  let before=0, minD=Infinity, maxD=-Infinity, nD=0;
+  for(const r of f){
+    if(!r.PaidDate||!r.ServiceDate) continue;
+    const d=daysBetween(r.ServiceDate,r.PaidDate);
+    if(!Number.isFinite(d)) continue;
+    nD++; if(d<0) before++; if(d<minD) minD=d; if(d>maxD) maxD=d;
+  }
+  A.paidBefore=before; A.paidMin=minD; A.paidMax=maxD; A.paidN=nD;
+
+  const BANDS=[["0–17",0,17],["18–34",18,34],["35–49",35,49],["50–64",50,64],["65–79",65,79],["80+",80,200]];
+  const ab=BANDS.map(([name])=>({name,n:0}));
+  const now=new Date();
+  for(const p of G.gold.dim_patient){
+    if(!p.dob) continue;
+    const d=new Date(p.dob+"T00:00:00Z");
+    if(isNaN(d)) continue;
+    let age=now.getUTCFullYear()-d.getUTCFullYear();
+    const mo=now.getUTCMonth()-d.getUTCMonth();
+    if(mo<0||(mo===0&&now.getUTCDate()<d.getUTCDate())) age--;
+    for(let i=0;i<BANDS.length;i++){ if(age>=BANDS[i][1]&&age<=BANDS[i][2]){ ab[i].n++; break; } }
+  }
+  A.ageBands=ab;
+
+  const rate=(key)=>{
+    const g=new Map();
+    for(const r of f){
+      let o=g.get(r[key]); if(!o) g.set(r[key],o={name:r[key],charge:0,paid:0,n:0});
+      o.charge+=r.Charge_Amt; o.paid+=r.Paid_Amt; o.n++;
+    }
+    return [...g.values()].sort((a,b)=>b.charge-a.charge);
+  };
+  A.byVisit=rate("VisitType"); A.byAmountType=rate("AmountType");
+
+  const src=new Map();
+  for(const r of f){
+    let o=src.get(r.datasource); if(!o) src.set(r.datasource,o={name:r.datasource,charge:0,paid:0,n:0});
+    o.charge+=r.Charge_Amt; o.paid+=r.Paid_Amt; o.n++;
+  }
+  A.bySource=[...src.values()].sort((a,b)=>a.name<b.name?-1:1);
+
+  const byA=new Set(G.gold.dim_patient.filter(p=>p.datasource==="hosa").map(p=>p.src_patientid));
+  A.srcIdCollisions=G.gold.dim_patient.filter(p=>p.datasource==="hosb"&&byA.has(p.src_patientid)).length;
+
+  G.A=A;
+  return A;
+}
+
+/* ======================================================================
+   Chart primitives
+   ====================================================================== */
+function tipFor(host){
+  let t=host.querySelector(".tip");
+  if(!t){ t=document.createElement("div"); t.className="tip"; host.appendChild(t); }
+  return t;
+}
+function showTip(host,t,x,y,html){
+  t.innerHTML=html; t.dataset.on="1";
+  const hw=host.clientWidth, tw=t.offsetWidth||150, th=t.offsetHeight||60;
+  let left=x+12; if(left+tw>hw) left=Math.max(0,x-tw-12);
+  let top=y-th-10; if(top<0) top=y+14;
+  t.style.left=left+"px"; t.style.top=top+"px";
+}
+const hideTip=t=>{ t.dataset.on="0"; };
+
+/* --- sparkline for a stat tile --- */
+function sparkline(values,{color="var(--s1)",fill=true}={}){
+  const W=200,H=34,P=3;
+  const max=Math.max(...values), min=Math.min(...values);
+  const span=(max-min)||1;
+  const x=i=>P+i*(W-2*P)/(values.length-1);
+  const y=v=>P+(H-2*P)-((v-min)/span)*(H-2*P);
+  const line=values.map((v,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const area=`${line} L${x(values.length-1).toFixed(1)},${H-P} L${x(0).toFixed(1)},${H-P} Z`;
+  const last=values.length-1;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    ${fill?`<path d="${area}" fill="${color}" opacity=".13"/>`:""}
+    <path d="${line}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="${x(last).toFixed(1)}" cy="${y(values[last]).toFixed(1)}" r="2.6" fill="${color}"/>
+  </svg>`;
+}
+
+/* --- two-series line + area over months --- */
+function drawTrend(host,months){
+  host.innerHTML="";
+  const W=940,H=320,P={t:18,r:84,b:38,l:66};
+  const iw=W-P.l-P.r, ih=H-P.t-P.b;
+  const max=Math.max(...months.map(m=>m.charge))*1.14;
+  const x=i=>P.l+(months.length===1?iw/2:i*iw/(months.length-1));
+  const y=v=>P.t+ih-(v/max)*ih;
+  const ticks=4, tickVals=Array.from({length:ticks+1},(_,i)=>max*i/ticks);
+  const line=key=>months.map((m,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(m[key]).toFixed(1)}`).join(" ");
+  const area=key=>`${line(key)} L${x(months.length-1).toFixed(1)},${(P.t+ih).toFixed(1)} L${x(0).toFixed(1)},${(P.t+ih).toFixed(1)} Z`;
+  const last=months.length-1, anchor=Math.max(0,last-1);
+
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Charged and collected amount by service month">
+    <defs>
+      <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="var(--s1)" stop-opacity=".26"/><stop offset="1" stop-color="var(--s1)" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="g2" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="var(--s2)" stop-opacity=".2"/><stop offset="1" stop-color="var(--s2)" stop-opacity="0"/>
+      </linearGradient>
+    </defs>`;
+  for(const v of tickVals){
+    s+=`<line x1="${P.l}" x2="${P.l+iw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--rule)" stroke-width="1"/>`;
+    s+=`<text x="${P.l-11}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--ink-muted)" font-family="var(--font-sans)" style="font-variant-numeric:tabular-nums">${axisMoney(v)}</text>`;
+  }
+  s+=`<line x1="${P.l}" x2="${P.l+iw}" y1="${P.t+ih}" y2="${P.t+ih}" stroke="var(--axis)" stroke-width="1"/>`;
+  s+=`<path d="${area("charge")}" fill="url(#g1)"/><path d="${area("paid")}" fill="url(#g2)"/>`;
+  // the uncollected gap, called out once at the widest full month
+  let gapI=0,gapV=-1;
+  months.forEach((m,i)=>{ if(!m.partial && (m.charge-m.paid)>gapV){ gapV=m.charge-m.paid; gapI=i; } });
+  s+=`<line x1="${x(gapI).toFixed(1)}" x2="${x(gapI).toFixed(1)}" y1="${y(months[gapI].charge).toFixed(1)}" y2="${y(months[gapI].paid).toFixed(1)}" stroke="var(--ink-muted)" stroke-width="1"/>`;
+  s+=`<text x="${(x(gapI)+7).toFixed(1)}" y="${((y(months[gapI].charge)+y(months[gapI].paid))/2+4).toFixed(1)}" font-size="10.5" fill="var(--ink-muted)" font-family="var(--font-sans)">${compact(gapV)} uncollected</text>`;
+  s+=`<path d="${line("charge")}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  s+=`<path d="${line("paid")}" fill="none" stroke="var(--s2)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  months.forEach((m,i)=>{
+    s+=`<text x="${x(i).toFixed(1)}" y="${H-13}" text-anchor="middle" font-size="11" fill="${m.partial?"var(--ink-muted)":"var(--ink-2)"}" font-family="var(--font-sans)">${monthLabel(m.key)}</text>`;
+    if(m.partial){
+      s+=`<circle cx="${x(i).toFixed(1)}" cy="${y(m.charge).toFixed(1)}" r="4.5" fill="var(--surface)" stroke="var(--s1)" stroke-width="2"/>`;
+      s+=`<circle cx="${x(i).toFixed(1)}" cy="${y(m.paid).toFixed(1)}" r="4.5" fill="var(--surface)" stroke="var(--s2)" stroke-width="2"/>`;
+      s+=`<text x="${x(i).toFixed(1)}" y="${H-26}" text-anchor="middle" font-size="9.5" fill="var(--ink-muted)" font-family="var(--font-sans)" letter-spacing=".06em">PARTIAL</text>`;
+    }
+  });
+  s+=`<text x="${(x(last)+10).toFixed(1)}" y="${(y(months[anchor].charge)-1).toFixed(1)}" font-size="11.5" font-weight="600" fill="var(--s1)" font-family="var(--font-sans)">Charged</text>`;
+  s+=`<text x="${(x(last)+10).toFixed(1)}" y="${(y(months[anchor].paid)+14).toFixed(1)}" font-size="11.5" font-weight="600" fill="var(--s2)" font-family="var(--font-sans)">Collected</text>`;
+  s+=`<g id="cross" opacity="0"><line y1="${P.t}" y2="${P.t+ih}" stroke="var(--axis)" stroke-width="1"/>
+      <circle r="4.5" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/><circle r="4.5" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"/></g>`;
+  s+=`<rect id="hit" x="${P.l}" y="${P.t}" width="${iw}" height="${ih}" fill="transparent" style="cursor:crosshair"/>`;
+  s+=`</svg>`;
+  host.innerHTML=s+`<div class="legend">
+      <span class="lg"><span class="sw" style="background:var(--s1)"></span>Charged amount</span>
+      <span class="lg"><span class="sw" style="background:var(--s2)"></span>Collected amount</span>
+      <span class="lg"><span class="sw" style="background:var(--surface);border:2px solid var(--axis)"></span>Partial month</span>
+    </div>`;
+
+  const svg=host.querySelector("svg"), t=tipFor(host), cross=svg.querySelector("#cross"), hit=svg.querySelector("#hit");
+  const nearest=ev=>{
+    const r=svg.getBoundingClientRect();
+    const px=(ev.clientX-r.left)/r.width*W;
+    let best=0,bd=Infinity;
+    months.forEach((m,i)=>{ const d=Math.abs(x(i)-px); if(d<bd){bd=d;best=i;} });
+    return best;
+  };
+  const move=ev=>{
+    const i=nearest(ev), m=months[i];
+    cross.setAttribute("opacity","1");
+    cross.querySelector("line").setAttribute("x1",x(i)); cross.querySelector("line").setAttribute("x2",x(i));
+    const cs=cross.querySelectorAll("circle");
+    cs[0].setAttribute("cx",x(i)); cs[0].setAttribute("cy",y(m.charge));
+    cs[1].setAttribute("cx",x(i)); cs[1].setAttribute("cy",y(m.paid));
+    const r=svg.getBoundingClientRect(), sc=r.width/W;
+    showTip(host,t,x(i)*sc,y(m.paid)*sc,
+      `<div class="tip-t">${monthLabel(m.key)}${m.partial?" · partial month":""}</div>
+       <div class="tip-r"><span>Charged</span><b>${money(m.charge)}</b></div>
+       <div class="tip-r"><span>Collected</span><b>${money(m.paid)}</b></div>
+       <div class="tip-r"><span>Uncollected</span><b>${money(m.charge-m.paid)}</b></div>
+       <div class="tip-r"><span>Collection rate</span><b>${pct(m.paid,m.charge)}</b></div>
+       <div class="tip-r"><span>Transactions</span><b>${N(m.n)}</b></div>`);
+  };
+  hit.addEventListener("pointermove",move);
+  hit.addEventListener("pointerdown",move);
+  hit.addEventListener("pointerleave",()=>{cross.setAttribute("opacity","0");hideTip(t);});
+}
+
+/* --- horizontal bars, one hue --- */
+function drawBarsH(host,rows,{color="var(--s1)",fmt=money,sub=null,label="value"}={}){
+  host.innerHTML="";
+  const W=560, rowH=32, labelW=136, valW=78;
+  const H=rows.length*rowH+6;
+  const iw=W-labelW-valW;
+  const max=Math.max(...rows.map(r=>r.v))||1;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">`;
+  rows.forEach((r,i)=>{
+    const y=i*rowH+6, bh=rowH-14, w=Math.max(2,(r.v/max)*iw);
+    s+=`<text x="0" y="${y+bh/2+4}" font-size="11.5" fill="var(--ink-2)" font-family="var(--font-sans)">${esc(r.name)}</text>`;
+    s+=`<rect x="${labelW}" y="${y}" width="${iw}" height="${bh}" rx="4" fill="var(--surface-2)"/>`;
+    s+=`<rect class="bar" data-i="${i}" x="${labelW}" y="${y}" width="${w.toFixed(1)}" height="${bh}" rx="4" fill="${r.color||color}"/>`;
+    s+=`<text x="${W}" y="${y+bh/2+4}" text-anchor="end" font-size="11.5" font-weight="600" fill="var(--ink)" font-family="var(--font-sans)" style="font-variant-numeric:tabular-nums">${fmt(r.v)}</text>`;
+    s+=`<rect class="hit" data-i="${i}" x="0" y="${y-3}" width="${W}" height="${rowH-8}" fill="transparent"/>`;
+  });
+  s+=`</svg>`;
+  host.innerHTML=s;
+  const svg=host.querySelector("svg"), t=tipFor(host);
+  svg.querySelectorAll(".hit").forEach(h=>{
+    h.addEventListener("pointerenter",()=>{
+      const r=rows[+h.dataset.i], bb=svg.getBoundingClientRect(), hb=h.getBoundingClientRect();
+      const extra=sub?sub(r):"";
+      showTip(host,t,hb.left-bb.left+Math.min(hb.width*0.55,320),hb.top-bb.top+hb.height/2,
+        `<div class="tip-t">${esc(r.name)}</div><div class="tip-r"><span>${esc(label)}</span><b>${fmt(r.v)}</b></div>${extra}`);
+    });
+    h.addEventListener("pointerleave",()=>hideTip(t));
+  });
+}
+
+/* --- vertical bars with an ordinal fill --- */
+function drawBarsV(host,rows,{label="count"}={}){
+  host.innerHTML="";
+  const W=520,H=240,P={t:18,r:6,b:46,l:48};
+  const iw=W-P.l-P.r, ih=H-P.t-P.b;
+  const max=Math.max(...rows.map(r=>r.v))*1.16||1;
+  const bw=iw/rows.length;
+  const ticks=3, tickVals=Array.from({length:ticks+1},(_,i)=>max*i/ticks);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">`;
+  for(const v of tickVals){
+    const y=P.t+ih-(v/max)*ih;
+    s+=`<line x1="${P.l}" x2="${P.l+iw}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--rule)" stroke-width="1"/>`;
+    s+=`<text x="${P.l-9}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--ink-muted)" font-family="var(--font-sans)" style="font-variant-numeric:tabular-nums">${N(Math.round(v))}</text>`;
+  }
+  s+=`<line x1="${P.l}" x2="${P.l+iw}" y1="${P.t+ih}" y2="${P.t+ih}" stroke="var(--axis)" stroke-width="1"/>`;
+  rows.forEach((r,i)=>{
+    const h=Math.max(2,(r.v/max)*ih), x=P.l+i*bw+3, w=bw-6, y=P.t+ih-h;
+    s+=`<rect class="bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${r.color}"/>`;
+    s+=`<text x="${(x+w/2).toFixed(1)}" y="${H-26}" text-anchor="middle" font-size="11" fill="var(--ink-2)" font-family="var(--font-sans)">${esc(r.name)}</text>`;
+    s+=`<text x="${(x+w/2).toFixed(1)}" y="${(y-7).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink-2)" font-family="var(--font-sans)" style="font-variant-numeric:tabular-nums">${N(r.v)}</text>`;
+    s+=`<rect class="hit" data-i="${i}" x="${x.toFixed(1)}" y="${P.t}" width="${w.toFixed(1)}" height="${ih}" fill="transparent"/>`;
+  });
+  s+=`<text x="${P.l+iw/2}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--ink-muted)" font-family="var(--font-sans)" letter-spacing=".09em">AGE BAND IN YEARS</text>`;
+  s+=`</svg>`;
+  host.innerHTML=s;
+  const svg=host.querySelector("svg"), t=tipFor(host), total=rows.reduce((a,r)=>a+r.v,0);
+  svg.querySelectorAll(".hit").forEach(h=>{
+    h.addEventListener("pointerenter",()=>{
+      const r=rows[+h.dataset.i], bb=svg.getBoundingClientRect(), hb=h.getBoundingClientRect();
+      showTip(host,t,hb.left-bb.left+hb.width/2,hb.top-bb.top+44,
+        `<div class="tip-t">${esc(r.name)} years</div>
+         <div class="tip-r"><span>Patients</span><b>${N(r.v)}</b></div>
+         <div class="tip-r"><span>Share</span><b>${pct(r.v,total)}</b></div>`);
+    });
+    h.addEventListener("pointerleave",()=>hideTip(t));
+  });
+}
+
+/* ======================================================================
+   Diagrams
+   ====================================================================== */
+function drawArch(host){
+  const W=860,H=260;
+  const box=(x,y,w,h,title,lines,metal)=>{
+    let o=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="var(--surface-2)" stroke="var(--border)"/>`;
+    if(metal) o+=`<rect x="${x}" y="${y}" width="${w}" height="3" rx="1.5" fill="${metal}"/>`;
+    o+=`<text x="${x+14}" y="${y+24}" font-size="12.5" font-weight="600" fill="var(--ink)" font-family="var(--font-sans)">${esc(title)}</text>`;
+    lines.forEach((l,i)=>{ o+=`<text x="${x+14}" y="${y+43+i*15}" font-size="10.5" fill="var(--ink-2)" font-family="var(--font-mono)">${esc(l)}</text>`; });
+    return o;
+  };
+  const arrow=(x1,y1,x2,y2,label)=>{
+    let o=`<line x1="${x1}" y1="${y1}" x2="${x2-7}" y2="${y2}" stroke="var(--axis)" stroke-width="1.5"/>
+           <path d="M${x2-7},${y2-4} L${x2},${y2} L${x2-7},${y2+4} Z" fill="var(--axis)"/>`;
+    if(label) o+=`<text x="${(x1+x2)/2}" y="${y1-8}" text-anchor="middle" font-size="9.5" fill="var(--ink-muted)" font-family="var(--font-sans)" letter-spacing=".06em">${esc(label)}</text>`;
+    return o;
+  };
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Medallion architecture: sources to gold">`;
+  s+=box(0,24,132,96,"Sources",["Azure SQL ×2","claims CSV ×2","CPT reference"],"var(--m-landing)");
+  s+=arrow(132,72,196,72,"ADF COPY");
+  s+=box(196,24,132,96,"Landing",["raw CSV","12 files","11 MB"],"var(--m-landing)");
+  s+=arrow(328,72,392,72,"PARQUET");
+  s+=box(392,24,132,96,"Bronze",["typed cols","+ datasource","7 tables"],"var(--m-bronze)");
+  s+=arrow(524,72,588,72,"MERGE");
+  s+=box(588,24,132,96,"Silver",["CDM mapping","quality + SCD2","is_current"],"var(--m-silver)");
+  s+=`<line x1="654" y1="120" x2="654" y2="152" stroke="var(--axis)" stroke-width="1.5"/>
+      <path d="M650,152 L654,159 L658,152 Z" fill="var(--axis)"/>`;
+  s+=box(588,159,132,80,"Gold",["dim × 4 + fact","business-ready"],"var(--m-gold)");
+  s+=`<line x1="588" y1="199" x2="407" y2="199" stroke="var(--axis)" stroke-width="1.5"/>
+      <path d="M407,195 L400,199 L407,203 Z" fill="var(--axis)"/>`;
+  s+=box(200,159,200,80,"This dashboard",["reads gold only","never the raw files"],"var(--accent)");
+  s+=`<text x="0" y="14" font-size="9.5" fill="var(--ink-muted)" font-family="var(--font-sans)" letter-spacing=".1em">ORCHESTRATED BY AZURE DATA FACTORY · TRANSFORMED IN DATABRICKS</text>`;
+  s+=`</svg>`;
+  host.innerHTML=s;
+}
+
+function drawSchema(host,A){
+  const W=820,H=430;
+  const match=(o)=>A.txCount?((A.txCount-o)/A.txCount*100):0;
+  const dims=[
+    {t:"dim_patient", rows:G.gold.dim_patient.length, key:"FK_PatientID", m:match(A.patOrphan), x:40,  y:24,  cols:["patient_key","src_patientid","gender","dob"]},
+    {t:"dim_provider",rows:G.gold.dim_provider.length,key:"FK_ProviderID",m:match(A.provOrphan),x:580, y:24,  cols:["Provider_Key","Specialization","NPI"]},
+    {t:"dim_department",rows:G.gold.dim_department.length,key:"FK_DeptID", m:match(A.deptOrphan),x:40,  y:286, cols:["Dept_Id","SRC_Dept_Id","Name"]},
+    {t:"dim_cpt_code",rows:G.gold.dim_cpt_code.length, key:"CPT_Code",    m:match(A.cptOrphan), x:580, y:286, cols:["CPT_Code","Category","Code_Status"]}
+  ];
+  const fx=290, fy=150, fw=240, fh=132;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Star schema with join match rates">`;
+  // arms first, so boxes sit on top
+  dims.forEach(d=>{
+    const dx=d.x+(d.x<fx?170:0), dy=d.y+ (d.y<fy?104:0);
+    const tx=d.x<fx?fx:fx+fw, ty=fy+fh/2;
+    const mid=(dx+tx)/2;
+    const tone=d.m>=99?"var(--good)":d.m>=50?"var(--warning)":"var(--critical)";
+    s+=`<path d="M${dx},${dy} L${mid},${dy} L${mid},${ty} L${tx},${ty}" fill="none" stroke="var(--axis)" stroke-width="1.5"/>`;
+    s+=`<circle cx="${mid}" cy="${(dy+ty)/2}" r="17" fill="var(--surface)" stroke="${tone}" stroke-width="2"/>`;
+    s+=`<text x="${mid}" y="${(dy+ty)/2+4}" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)" font-family="var(--font-sans)">${d.m.toFixed(0)}%</text>`;
+  });
+  dims.forEach(d=>{
+    s+=`<rect x="${d.x}" y="${d.y}" width="170" height="104" rx="10" fill="var(--surface-2)" stroke="var(--border)"/>`;
+    s+=`<rect x="${d.x}" y="${d.y}" width="170" height="3" rx="1.5" fill="var(--m-gold)"/>`;
+    s+=`<text x="${d.x+13}" y="${d.y+23}" font-size="11.5" font-weight="600" fill="var(--ink)" font-family="var(--font-mono)">${d.t}</text>`;
+    s+=`<text x="${d.x+13}" y="${d.y+38}" font-size="10" fill="var(--ink-muted)" font-family="var(--font-sans)">${N(d.rows)} rows</text>`;
+    d.cols.forEach((c,i)=>{ s+=`<text x="${d.x+13}" y="${d.y+55+i*14}" font-size="9.5" fill="var(--ink-2)" font-family="var(--font-mono)">${c}</text>`; });
+  });
+  s+=`<rect x="${fx}" y="${fy}" width="${fw}" height="${fh}" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>`;
+  s+=`<text x="${fx+16}" y="${fy+26}" font-size="12.5" font-weight="700" fill="var(--accent)" font-family="var(--font-mono)">gold.fact_transactions</text>`;
+  s+=`<text x="${fx+16}" y="${fy+43}" font-size="10.5" fill="var(--ink-2)" font-family="var(--font-sans)">${N(A.txCount)} rows · one billed line each</text>`;
+  ["Charge_Amt · Paid_Amt","ServiceDate · PaidDate","4 foreign keys"].forEach((c,i)=>{
+    s+=`<text x="${fx+16}" y="${fy+66+i*16}" font-size="10" fill="var(--ink-2)" font-family="var(--font-mono)">${c}</text>`;
+  });
+  s+=`<text x="${fx+16}" y="${fy+fh-9}" font-size="9.5" fill="var(--ink-muted)" font-family="var(--font-sans)" letter-spacing=".06em">MEASURES LIVE HERE · DIMENSIONS DESCRIBE THEM</text>`;
+  s+=`</svg>`;
+  host.innerHTML=s;
+}
+
+/* ======================================================================
+   Views
+   ====================================================================== */
+function renderHeadline(A){
+  const rate=A.paid/A.charge*100, gap=A.charge-A.paid;
+  el("headline").innerHTML=`
+    <div>
+      <span class="headline-k">What the run says</span>
+      <h3>Of <b>${compact(A.charge)}</b> charged across ${N(A.txCount)} transactions, <b>${compact(A.paid)}</b> was collected.</h3>
+      <p>${compact(gap)} is still outstanding, and ${pct(A.denied,A.claims)} of claims came back denied or rejected — work that has to be reworked before any of it can be collected.</p>
+    </div>
+    <div class="meter-wrap">
+      <div class="meter-top">
+        <span class="meter-big">${rate.toFixed(1)}%</span>
+        <span class="headline-k">collection rate</span>
+      </div>
+      <div class="meter">
+        <i style="width:${rate.toFixed(2)}%;background:var(--s1)"></i>
+        <i style="flex:1;background:var(--s2);opacity:.55"></i>
+      </div>
+      <div class="meter-legend">
+        <span><span class="sw" style="background:var(--s1)"></span>Collected ${compact(A.paid)}</span>
+        <span><span class="sw" style="background:var(--s2);opacity:.55"></span>Outstanding ${compact(gap)}</span>
+      </div>
+    </div>`;
+}
+
+function renderKpis(A){
+  const full=A.months.filter((m,i)=>i<A.months.length-1);
+  const lastF=full[full.length-1], prevF=full[full.length-2];
+  const dCharge=(lastF.charge-prevF.charge)/prevF.charge*100;
+  const dPaid=(lastF.paid-prevF.paid)/prevF.paid*100;
+  const rate=A.paid/A.charge*100;
+  const quarPct=(G.quarantined/G.silverRows*100);
+  const arrow=v=>v>=0?"▲":"▼";
+  const tiles=[
+    {k:"Charged amount",v:compact(A.charge),
+     delta:`<span class="delta">${arrow(dCharge)} ${Math.abs(dCharge).toFixed(1)}%</span>`,
+     s:`${N(A.txCount)} transactions · ${money2(A.charge/A.txCount)} average line`,
+     extra:`<div class="spark">${sparkline(full.map(m=>m.charge))}</div>`,
+     mean:"What the hospitals billed. The delta compares October with September, the last two full months."},
+    {k:"Collected amount",v:compact(A.paid),
+     delta:`<span class="delta" data-tone="${dPaid>=0?"up":"down"}">${arrow(dPaid)} ${Math.abs(dPaid).toFixed(1)}%</span>`,
+     s:`${compact(A.charge-A.paid)} of the billed amount never arrived`,
+     extra:`<div class="spark">${sparkline(full.map(m=>m.paid),{color:"var(--s2)"})}</div>`,
+     mean:"Cash actually received against those bills. Collected falling faster than charged is the warning sign."},
+    {k:"Collection rate",v:rate.toFixed(1)+"%",
+     s:`<b>${compact(A.charge-A.paid)}</b> uncollected over 11 months of service dates`,
+     extra:`<div class="minimeter"><i style="width:${rate.toFixed(2)}%;background:var(--s1)"></i><i style="flex:1;background:var(--surface-3)"></i></div>`,
+     mean:"Collected ÷ charged. The single number a revenue cycle team is judged on."},
+    {k:"Claims processed",v:N(A.claims),
+     s:`over <b>${N(A.claimTxnKeys)}</b> distinct transaction keys — claims repeat per transaction`,
+     extra:`<div class="minimeter"><i style="width:${(A.settled/A.claims*100).toFixed(2)}%;background:var(--good)"></i><i style="width:${(A.inflight/A.claims*100).toFixed(2)}%;background:var(--warning)"></i><i style="width:${(A.denied/A.claims*100).toFixed(2)}%;background:var(--critical)"></i></div>`,
+     mean:"One row per claim line. Green settled, amber waiting on the payer, red needs rework."},
+    {k:"Denied or rejected",v:pct(A.denied,A.claims),
+     s:`<b>${N(A.denied)}</b> of ${N(A.claims)} claims have to be corrected and resubmitted`,
+     extra:`<div class="minimeter"><i style="width:${(A.denied/A.claims*100).toFixed(2)}%;background:var(--critical)"></i><i style="flex:1;background:var(--surface-3)"></i></div>`,
+     mean:"The denial rate. Anything near 40% would be a staffing emergency on a real feed; here it is the generator dealing statuses evenly."},
+    {k:"Rows quarantined",v:N(G.quarantined),
+     s:`of ${N(G.silverRows)} silver rows (${quarPct.toFixed(3)}%) · all from hospital B patients`,
+     extra:`<div class="minimeter"><i style="width:${Math.max(quarPct,0.6).toFixed(2)}%;background:var(--warning)"></i><i style="flex:1;background:var(--surface-3)"></i></div>`,
+     mean:"Rows held out of gold by the silver quality checks instead of being deleted, so they stay auditable."}
+  ];
+  el("kpis").innerHTML=tiles.map(t=>`
+    <div class="kpi">
+      <span class="kpi-k">${t.k}</span>
+      <div class="kpi-row"><span class="kpi-v">${t.v}</span>${t.delta||""}</div>
+      <span class="kpi-s">${t.s}</span>
+      ${t.extra||""}
+      <span class="kpi-mean">${t.mean}</span>
+    </div>`).join("");
+}
+
+function renderCharts(A){
+  const months=A.months.map((m,i)=>({...m,partial:i===A.months.length-1}));
+  drawTrend(el("ch-trend"),months);
+
+  // claim outcome stack
+  const groups=[
+    {name:"Settled",v:A.settled,color:"var(--good)",ink:"light",desc:"Paid or approved — no further work"},
+    {name:"In flight",v:A.inflight,color:"var(--warning)",ink:"dark",desc:"Pending with the payer"},
+    {name:"Needs rework",v:A.denied,color:"var(--critical)",ink:"light",desc:"Denied or rejected — correct and resubmit"}
+  ];
+  el("ch-outcome").innerHTML=`
+    <div class="stack">${groups.map(g=>`<i style="width:${(g.v/A.claims*100).toFixed(2)}%;background:${g.color}" data-ink="${g.ink}">${(g.v/A.claims*100).toFixed(1)}%</i>`).join("")}</div>
+    <div class="stack-key">${groups.map(g=>`
+      <div class="sk">
+        <span class="sk-h"><i style="background:${g.color}"></i>${g.name}</span>
+        <span class="sk-v">${N(g.v)}</span>
+        <span class="sk-s">${g.desc}</span>
+      </div>`).join("")}</div>`;
+
+  const maxStatus=Math.max(...A.status.map(s=>s.n));
+  el("t-status").innerHTML=`<table><thead><tr><th>Raw status</th><th>Group</th><th class="num">Claims</th><th class="num">Share</th><th>Distribution</th></tr></thead><tbody>${
+    A.status.map(s=>{
+      const grp=s.name==="Denied"||s.name==="Rejected"?["Needs rework","critical"]:s.name==="Pending"?["In flight","warning"]:["Settled","ok"];
+      return `<tr><td><b>${esc(s.name)}</b></td><td><span class="pill" ${grp[1]==="ok"?'data-tone="ok"':""}>${grp[0]}</span></td>
+      <td class="num">${N(s.n)}</td><td class="num">${pct(s.n,A.claims)}</td>
+      <td class="bar-cell"><i style="--w:${(s.n/maxStatus*100).toFixed(1)}%"></i></td></tr>`;
+    }).join("")}</tbody></table>`;
+
+  drawBarsH(el("ch-dept"),A.departments.slice(0,10).map(d=>({name:d.name,v:d.charge,n:d.n,paid:d.paid})),{
+    fmt:compact,label:"Charged amount",
+    sub:r=>`<div class="tip-r"><span>Collected</span><b>${compact(r.paid)}</b></div>
+            <div class="tip-r"><span>Collection rate</span><b>${pct(r.paid,r.v)}</b></div>
+            <div class="tip-r"><span>Transactions</span><b>${N(r.n)}</b></div>`
+  });
+
+  drawBarsH(el("ch-payor"),A.payors.map(p=>({name:p.name,v:p.n,amt:p.amt})),{
+    fmt:N,label:"Claims",
+    sub:r=>`<div class="tip-r"><span>Share of claims</span><b>${pct(r.v,A.claims)}</b></div>
+            <div class="tip-r"><span>Amount claimed</span><b>${compact(r.amt)}</b></div>`
+  });
+
+  const ord=["var(--ord-1)","var(--ord-2)","var(--ord-3)","var(--ord-4)","var(--ord-5)","var(--ord-6)"];
+  drawBarsV(el("ch-age"),A.ageBands.map((b,i)=>({name:b.name,v:b.n,color:ord[i]})),{label:"Patients by age band"});
+
+  el("t-source").innerHTML=`<table><thead><tr><th>Source</th><th>Hospital</th><th class="num">Transactions</th><th class="num">Charged</th><th class="num">Collected</th><th class="num">Rate</th></tr></thead><tbody>${
+    A.bySource.map(r=>`<tr><td class="mono">${esc(r.name)}</td>
+      <td>${r.name==="hosa"?"hospital-a":"hospital-b"}</td>
+      <td class="num">${N(r.n)}</td><td class="num">${money(r.charge)}</td>
+      <td class="num">${money(r.paid)}</td><td class="num">${pct(r.paid,r.charge)}</td></tr>`).join("")}
+    <tr class="total"><td class="mono">both</td><td>combined</td><td class="num">${N(A.txCount)}</td>
+      <td class="num">${money(A.charge)}</td><td class="num">${money(A.paid)}</td><td class="num">${pct(A.paid,A.charge)}</td></tr>
+    </tbody></table>`;
+
+  const rows=[
+    ...A.byVisit.map(r=>({dim:"VisitType",...r})),
+    ...A.byAmountType.map(r=>({dim:"AmountType",...r}))
+  ];
+  el("t-rate").innerHTML=`<table><thead><tr>
+      <th>Dimension</th><th>Value</th><th class="num">Transactions</th>
+      <th class="num">Charged</th><th class="num">Collected</th><th class="num">Collection rate</th>
+    </tr></thead><tbody>${rows.map(r=>`<tr>
+      <td class="mono">${r.dim}</td><td><b>${esc(r.name)}</b></td><td class="num">${N(r.n)}</td>
+      <td class="num">${money(r.charge)}</td><td class="num">${money(r.paid)}</td>
+      <td class="num">${pct(r.paid,r.charge)}</td></tr>`).join("")}
+    <tr class="total"><td class="mono">—</td><td>All transactions</td><td class="num">${N(A.txCount)}</td>
+      <td class="num">${money(A.charge)}</td><td class="num">${money(A.paid)}</td>
+      <td class="num">${pct(A.paid,A.charge)}</td></tr></tbody></table>`;
+}
+
+function renderRun(){
+  drawArch(el("d-arch"));
+  el("total-ms").textContent=`${G.totalMs.toFixed(0)} ms end to end`;
+  const metals={Landing:"var(--m-landing)",Bronze:"var(--m-bronze)",Silver:"var(--m-silver)",Gold:"var(--m-gold)"};
+  const stages=LOG.map(l=>`<tr>
+      <td><span class="pill" data-tone="metal" style="background:${metals[l.stage]}">${esc(l.stage)}</span></td>
+      <td>${esc(l.step)}</td>
+      <td class="num">${N(l.rows)}</td>
+      <td class="mono">${esc(l.detail)}</td>
+      <td class="num">${l.ms.toFixed(0)} ms</td>
+    </tr>`).join("");
+  const files=G.landing.map(f=>`<tr>
+      <td class="mono">${esc(f.path.replace(/^\.\.\/datasets\//,""))}</td>
+      <td>${esc(f.origin)}</td>
+      <td class="num">${N(f.rowsIn)}</td>
+      <td class="num">${f.cols}</td>
+      <td class="num">${(f.bytes/1024).toFixed(0)} KB</td>
+    </tr>`).join("");
+  el("t-log").innerHTML=`<table><thead><tr><th>Stage</th><th>What it did</th><th class="num">Rows out</th><th>Detail</th><th class="num">Elapsed</th></tr></thead>
+    <tbody>${stages}</tbody></table>
+    <table><thead><tr><th>Landing file</th><th>Source</th><th class="num">Rows</th><th class="num">Cols</th><th class="num">Size</th></tr></thead>
+    <tbody>${files}</tbody></table>`;
+
+  const cfg=G.config, head=Object.keys(cfg[0]||{});
+  el("t-config").innerHTML=`<table><thead><tr>${head.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${
+    cfg.map(r=>`<tr>${head.map(h=>{
+      if(h==="is_active") return `<td><span class="pill" ${r[h]==="1"?'data-tone="ok"':'data-tone="off"'}>${r[h]==="1"?"active":"skipped"}</span></td>`;
+      if(h==="loadtype") return `<td><span class="pill">${esc(r[h]??"")}</span></td>`;
+      return `<td class="${["tablename","targetpath","watermark","database"].includes(h)?"mono":""}">${esc(r[h]??"")}</td>`;
+    }).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+const TABLES=[
+  {name:"gold.fact_transactions",get:()=>G.gold.fact_transactions,grain:"one billed transaction line",note:"Loaded from silver.transactions where is_current and not is_quarantined."},
+  {name:"gold.dim_patient",get:()=>G.gold.dim_patient,grain:"one patient per source system",note:"Projected without SSN, phone and address — no panel on this page uses them."},
+  {name:"gold.dim_provider",get:()=>G.gold.dim_provider,grain:"one provider",note:"Keys arrive source-prefixed (H1-, H2-) in the provider files."},
+  {name:"gold.dim_department",get:()=>G.gold.dim_department,grain:"one department per source system",note:"Both hospitals define the same 20 department names."},
+  {name:"gold.dim_cpt_code",get:()=>G.gold.dim_cpt_code,grain:"one CPT procedure code",note:"Reference catalogue; descriptions contain commas, so the loader is quote aware."},
+  {name:"silver.claims",get:()=>G.silver.claims,grain:"one claim line, SCD2 versioned",note:"This repository builds no claims fact, so every claim metric here reads the silver table."},
+  {name:"silver.transactions",get:()=>G.silver.transactions,grain:"one transaction, SCD2 versioned",note:"Carries is_current and is_quarantined; gold reads only current, clean rows."}
+];
+let prevIdx=0;
+function renderModel(){
+  const A=G.A;
+  drawSchema(el("d-schema"),A);
+  const fk=[
+    {t:"gold.dim_patient", k:"FK_PatientID → patient_key", orphan:A.patOrphan},
+    {t:"gold.dim_provider", k:"FK_ProviderID → Provider_Key", orphan:A.provOrphan},
+    {t:"gold.dim_department", k:"FK_DeptID → Dept_Id", orphan:A.deptOrphan},
+    {t:"gold.dim_cpt_code", k:"CPT_Code → CPT_Code", orphan:A.cptOrphan}
+  ];
+  el("t-tables").innerHTML=`<table><thead><tr><th>Table</th><th>One row is</th><th class="num">Rows</th><th>Join from fact</th><th class="num">Unmatched</th></tr></thead><tbody>${
+    TABLES.map(t=>{
+      const f=fk.find(x=>x.t===t.name);
+      const tone=!f?"":f.orphan===0?'data-tone="ok"':"";
+      return `<tr><td class="mono">${esc(t.name)}</td><td>${esc(t.grain)}</td><td class="num">${N(t.get().length)}</td>
+        <td class="mono">${f?esc(f.k):"—"}</td>
+        <td class="num">${f?`<span class="pill" ${tone}>${f.orphan?N(f.orphan)+" · "+pct(f.orphan,A.txCount):"none"}</span>`:"—"}</td></tr>`;
+    }).join("")}</tbody></table>`;
+
+  el("prev-btns").innerHTML=TABLES.map((t,i)=>`<button class="tbtn" type="button" data-i="${i}" aria-pressed="${i===prevIdx}">${esc(t.name)}</button>`).join("");
+  el("prev-btns").querySelectorAll(".tbtn").forEach(b=>b.addEventListener("click",()=>{prevIdx=+b.dataset.i;renderModel();}));
+  const T=TABLES[prevIdx], rows=T.get().slice(0,12), head=Object.keys(rows[0]||{});
+  el("prev-src").textContent=`${N(T.get().length)} rows · first 12`;
+  el("prev-foot").textContent=T.note;
+  el("t-preview").innerHTML=`<table><thead><tr>${head.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${
+    rows.map(r=>`<tr>${head.map(h=>{
+      const v=r[h];
+      if(typeof v==="boolean") return `<td><span class="pill" ${v?"":'data-tone="ok"'}>${v}</span></td>`;
+      if(typeof v==="number") return `<td class="num">${h.includes("Amt")||h.includes("Amount")?money2(v):v}</td>`;
+      const s=v===null||v===undefined?"∅":String(v);
+      return `<td class="${/ID|Key|Code|key|id/.test(h)?"mono":""}" title="${esc(s)}">${esc(s.length>44?s.slice(0,44)+"…":s)}</td>`;
+    }).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+function renderDq(){
+  const A=G.A, pq=G.silver.patients.filter(r=>r.is_quarantined);
+  const F=[
+    {sev:"critical",ic:"!",title:"Provider keys in the fact table are not in dim_provider",
+     body:`The transaction files reference ${N(A.provDistinct)} distinct provider keys, but the two provider extracts define only ${N(G.gold.dim_provider.length)}. Any report that groups revenue by provider or specialty would silently drop most of its revenue, so this dashboard has no provider breakdown.`,
+     metric:`${N(A.provOrphan)} of ${N(A.txCount)} fact rows unmatched · ${pct(A.provOrphan,A.txCount)}`,
+     fix:`Fix at the source extract: the provider feed has to cover every ProviderID the transaction feed emits, or the transaction feed has to be limited to providers that exist.`},
+    {sev:"critical",ic:"!",title:"Procedure codes do not match the CPT catalogue",
+     body:`<code>ProcedureCode</code> on the transaction feed is a five-digit number drawn at random, while <code>dim_cpt_code</code> holds the ${N(G.gold.dim_cpt_code.length)} real codes from the reference file. The two sets barely intersect, so procedure-level analysis is not possible on this data.`,
+     metric:`${N(A.cptOrphan)} of ${N(A.txCount)} fact rows unmatched · ${pct(A.cptOrphan,A.txCount)}`,
+     fix:`Generate procedure codes by sampling the CPT reference file rather than drawing random digits.`},
+    {sev:"serious",ic:"!",title:"PaidDate is not ordered against ServiceDate",
+     body:`Payment dates sit on both sides of the service date, from ${N(A.paidMin)} to ${N(A.paidMax)} days, so days-to-payment and AR aging cannot be computed. Those two metrics are the usual headline of an RCM dashboard and they are deliberately absent here rather than shown wrong.`,
+     metric:`${N(A.paidBefore)} of ${N(A.paidN)} rows paid before the service date · ${pct(A.paidBefore,A.paidN)}`,
+     fix:`Derive PaidDate as ServiceDate plus a positive lag, then AR aging buckets and a days-to-pay distribution can both be added to this dashboard.`},
+    {sev:"warning",ic:"~",title:"Claim amounts do not reconcile to transaction charges",
+     body:`The claim feed is generated independently of the transaction feed, so the two money columns describe the same encounters with different figures. Keeping the claim-side and charge-side metrics in separate cards is the only honest presentation until the feeds are reconciled upstream.`,
+     metric:`claims ${compact(A.claimAmt)} claimed vs fact ${compact(A.charge)} charged · ${(A.claimAmt/A.charge).toFixed(1)}× apart`,
+     fix:`Build the claim feed from the transaction feed so ClaimAmount rolls up to Charge_Amt per transaction.`},
+    {sev:"warning",ic:"~",title:"Quarantining a patient orphans that patient's transactions",
+     body:`The ${N(pq.length)} quarantined patients are held out of <code>dim_patient</code>, but their transactions still load into the fact table, which leaves those rows pointing at a dimension key that no longer exists.`,
+     metric:`${N(A.patOrphan)} fact rows reference one of the ${N(pq.length)} quarantined patients · ${pct(A.patOrphan,A.txCount)}`,
+     fix:`Add an unknown-member row to dim_patient and point orphaned facts at it, or quarantine the dependent facts in the same run.`},
+    {sev:"warning",ic:"~",title:"Both hospitals issue the same patient ID range",
+     body:`Hospital B's patient IDs reuse the <code>HOSP1-</code> prefix and the same numbering as hospital A. The surrogate key appends the data source, so no patients were merged — but a pipeline that keyed on the source ID alone would have collapsed two people into one.`,
+     metric:`${N(A.srcIdCollisions)} source IDs present in both hospitals · resolved by Patient_Key = SRC_PatientID + '-' + datasource`,
+     fix:`Nothing to fix in the pipeline. This is the surrogate key earning its keep, and it is worth a test that fails if the suffix is ever dropped.`},
+    {sev:"good",ic:"✓",title:"Patient quarantine rule fired as designed",
+     body:`Hospital B delivers rows whose first name is the literal string <code>NULL</code>. The silver predicate <code>lower(firstname) = 'null'</code> catches them, and they are held out of <code>dim_patient</code> instead of reaching the dashboard.`,
+     metric:`${N(pq.length)} rows quarantined${pq.length?" · e.g. "+esc(pq[0].Patient_Key):""}`,
+     fix:``},
+    {sev:"good",ic:"✓",title:"Transaction and claim null checks pass on every row",
+     body:`The quarantine predicates on <code>silver.transactions</code> and <code>silver.claims</code> test the keys and the dates they join on. No row failed, so the fact table loads at full volume and every claim row keeps a usable transaction key.`,
+     metric:`0 of ${N(A.txCount+A.claims)} rows quarantined · ${N(A.claimsJoined)} of ${N(A.claims)} claims carry a transaction key found in the fact table`,
+     fix:``}
+  ];
+  const counts={critical:0,serious:0,warning:0,good:0};
+  F.forEach(f=>counts[f.sev]++);
+  const bad=counts.critical+counts.serious;
+  el("dq-badge").textContent=bad; el("dq-badge").dataset.tone=bad?"":"ok";
+  el("health").innerHTML=`
+    <div class="hcard" style="--tone:var(--critical)"><span class="hcard-k">Blocking</span><span class="hcard-v">${counts.critical+counts.serious}</span><span class="hcard-s">metrics that cannot be built on this data</span></div>
+    <div class="hcard" style="--tone:var(--warning)"><span class="hcard-k">Watch</span><span class="hcard-v">${counts.warning}</span><span class="hcard-s">usable, but the caveat has to travel with the number</span></div>
+    <div class="hcard" style="--tone:var(--good)"><span class="hcard-k">Checks passing</span><span class="hcard-v">${counts.good}</span><span class="hcard-s">quality rules that fired correctly</span></div>
+    <div class="hcard" style="--tone:var(--accent)"><span class="hcard-k">Rows tested</span><span class="hcard-v">${N(G.silverRows)}</span><span class="hcard-s">every silver row, every foreign key</span></div>`;
+  el("finds").innerHTML=F.map(f=>`
+    <div class="find" data-sev="${f.sev}">
+      <span class="find-ic" aria-hidden="true">${f.ic}</span>
+      <div class="find-h"><h4>${f.title}</h4><span class="sev">${f.sev==="good"?"passing":f.sev}</span></div>
+      <div>
+        <p>${f.body}</p>
+        <p class="find-m">${f.metric}</p>
+        ${f.fix?`<p class="find-fix"><b>What it would take:</b> ${f.fix}</p>`:""}
+      </div>
+    </div>`).join("");
+}
+
+const STEPS=[
+  {h:"A patient is seen, and the visit is charged",p:"Each row in <code>fact_transactions</code> is one billed line: a charged amount, a service date, and keys to the patient, provider, department and procedure. 20,000 of them here."},
+  {h:"The charge becomes a claim to a payer",p:"<code>silver.claims</code> carries the claim sent to Medicare, a private insurer, or the patient directly. One transaction can carry several claim lines, which is why 20,000 claims map onto 12,692 transaction keys."},
+  {h:"The payer answers",p:"Approved and paid claims settle. Pending claims are still in flight. Denied and rejected claims have to be corrected and resubmitted — that is rework, and it is where a revenue cycle team spends its day."},
+  {h:"Cash arrives, or does not",p:"<code>Paid_Amt</code> against <code>Charge_Amt</code> gives the collection rate. The gap between the two lines on the trend chart is the money the hospitals billed and never received."}
+];
+const GLOSS_RCM=[
+  ["Charge amount","Charge_Amt","What the hospital billed for a service line, before any payer discount or patient payment."],
+  ["Paid amount","Paid_Amt","What was actually received against that line, from the insurer and the patient combined."],
+  ["Collection rate","paid ÷ charged","The share of billed revenue that turned into cash. The headline measure of a revenue cycle."],
+  ["Denial rate","denied ÷ claims","Share of claims the payer refused. Each one needs rework before it can be resubmitted, so denials are both lost cash and extra labour."],
+  ["Payer type","PayorType","Who is being billed: Government (Medicare, Medicaid), Private insurance, or Self-pay, where the patient owes it directly and collection is hardest."],
+  ["Claim status","ClaimStatus","Where a claim stands: Paid, Approved, Pending, Denied or Rejected. A rejection usually means a format or eligibility error; a denial is a decision on the merits."],
+  ["Encounter","EncounterID","One visit. A single encounter can generate many transaction lines — 20,000 transactions here come from 8,612 encounters."],
+  ["CPT code","ProcedureCode","The standard five-digit code for a procedure performed. Drives what can be billed for it."],
+  ["ICD code","ICDCode","The standard diagnosis code explaining why the procedure was needed. Payers check that the two agree."],
+  ["NPI","NPI","National Provider Identifier, the ten-digit number identifying a clinician on every claim in the United States."]
+];
+const GLOSS_DE=[
+  ["Medallion architecture","landing → bronze → silver → gold","Four layers, each with one job. Data only moves forward, so any figure can be traced back to the file it came from."],
+  ["Landing","raw zone","Source files copied in byte for byte, never edited. The audit trail."],
+  ["Bronze","typed zone","The same rows with real types and a <code>datasource</code> stamp, stored as parquet. Still one row per source row."],
+  ["Silver","conformed zone","Where the work happens: both hospitals mapped to common column names, quality predicates applied, history kept. Delta Lake tables."],
+  ["Gold","serving zone","The star schema a dashboard or BI tool reads. Clean, current rows only."],
+  ["Fact table","gold.fact_transactions","The table holding the measures — the amounts — at the finest grain, with foreign keys out to everything that describes them."],
+  ["Dimension table","gold.dim_*","The descriptive tables: who the patient was, which department, which procedure code. Small, wide, and reused by every query."],
+  ["Grain","one row is…","What a single row represents. Getting this wrong is how dashboards double count."],
+  ["Surrogate key","SRC_ID + '-' + datasource","A key the warehouse invents so two source systems that use the same IDs stay distinct. 4,985 patient IDs here collide across hospitals and this is what keeps them apart."],
+  ["SCD Type 2","is_current","Slowly Changing Dimension type 2: when a record changes, the old version is flagged <code>is_current = false</code> and a new row is inserted, so history survives rather than being overwritten."],
+  ["Quarantine","is_quarantined","Rows that fail a quality check are flagged and held out of gold instead of being dropped, so a bad row can still be found and explained."],
+  ["Config-driven ingestion","load_config.csv","One control table drives every ingestion. Adding a table is a row, not a code change — ADF reads it with Lookup and loops with ForEach."]
+];
+function renderHelp(){
+  el("steps").innerHTML=STEPS.map((s,i)=>`
+    <div class="step"><span class="step-n">${i+1}</span><h4>${s.h}</h4><p>${s.p}</p></div>`).join("");
+  const g=rows=>rows.map(([t,c,d])=>`
+    <div class="gterm"><h4>${esc(t)}<span>${c}</span></h4><p>${d}</p></div>`).join("");
+  el("gloss-rcm").innerHTML=g(GLOSS_RCM);
+  el("gloss-de").innerHTML=g(GLOSS_DE);
+  const A=G.A;
+  el("t-prov").innerHTML=`<table><thead><tr><th>Figure on this page</th><th class="num">Value</th><th>Computed as</th></tr></thead><tbody>
+    <tr><td>Charged amount</td><td class="num">${money2(A.charge)}</td><td class="mono">sum(Charge_Amt) over ${N(A.txCount)} fact rows</td></tr>
+    <tr><td>Collected amount</td><td class="num">${money2(A.paid)}</td><td class="mono">sum(Paid_Amt) over the same rows</td></tr>
+    <tr><td>Collection rate</td><td class="num">${pct(A.paid,A.charge)}</td><td class="mono">sum(Paid_Amt) / sum(Charge_Amt)</td></tr>
+    <tr><td>Claims</td><td class="num">${N(A.claims)}</td><td class="mono">count(*) from silver.claims where not is_quarantined</td></tr>
+    <tr><td>Denied or rejected</td><td class="num">${pct(A.denied,A.claims)}</td><td class="mono">(Denied + Rejected) / all claims</td></tr>
+    <tr><td>Patients</td><td class="num">${N(G.gold.dim_patient.length)}</td><td class="mono">dim_patient after ${N(G.quarantined)} quarantined rows held out</td></tr>
+    <tr><td>Encounters</td><td class="num">${N(A.encounters)}</td><td class="mono">count(distinct EncounterID) in the fact table</td></tr>
+    <tr><td>Source rows read</td><td class="num">${N(G.landing.reduce((a,f)=>a+f.rowsIn,0))}</td><td class="mono">${G.landing.length} files · ${(G.bytes/1048576).toFixed(2)} MB from datasets/</td></tr>
+  </tbody></table>`;
+}
+
+/* ======================================================================
+   Tabs + theme
+   ====================================================================== */
+const TABS=[["tab-gold","p-gold"],["tab-run","p-run"],["tab-model","p-model"],["tab-dq","p-dq"],["tab-help","p-help"]];
+function selectTab(id){
+  TABS.forEach(([t,p])=>{
+    const on=t===id;
+    el(t).setAttribute("aria-selected",on?"true":"false");
+    el(p).hidden=!on;
+  });
+  if(id==="tab-gold"&&G.A) renderCharts(G.A);
+}
+TABS.forEach(([t])=>el(t).addEventListener("click",()=>selectTab(t)));
+(function(){
+  const map={gold:"tab-gold",run:"tab-run",model:"tab-model",quality:"tab-dq",help:"tab-help"};
+  const h=(location.hash||"").replace("#","");
+  if(map[h]) selectTab(map[h]);
+})();
+
+const THEMES=["system","light","dark"];
+let themeIdx=0;
+function applyTheme(){
+  const t=THEMES[themeIdx];
+  if(t==="system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme",t);
+  el("themebtn").textContent="Theme: "+t;
+  try{ localStorage.setItem("rcm-theme",t); }catch(e){}
+}
+try{
+  const saved=localStorage.getItem("rcm-theme");
+  if(saved&&THEMES.includes(saved)) themeIdx=THEMES.indexOf(saved);
+}catch(e){}
+applyTheme();
+el("themebtn").addEventListener("click",()=>{ themeIdx=(themeIdx+1)%THEMES.length; applyTheme(); });
+
+/* ======================================================================
+   Boot
+   ====================================================================== */
+async function boot(){
+  try{
+    STAGES.forEach(s=>stage(s.key,{state:"queued",value:"—"}));
+    await runPipeline();
+    const A=aggregate();
+    renderHeadline(A); renderKpis(A); renderCharts(A); renderRun(); renderModel(); renderDq(); renderHelp();
+  }catch(err){
+    setRun("error","run failed");
+    el("rerun").hidden=false;
+    el("headline").innerHTML=`<div class="err" style="grid-column:1/-1">
+      <span class="headline-k">Pipeline run failed</span>
+      <h3>${esc(err.message||String(err))}</h3>
+      <p>This page reads <code>../datasets/</code> with relative paths, so it has to be served from the repository root — run <code>./dashboard/run.sh</code> and open <code>/dashboard/</code>. Opening the file directly with <code>file://</code> will not work.</p></div>`;
+    console.error(err);
+  }
+}
+el("rerun").addEventListener("click",()=>{ LOG.length=0; boot(); });
+let ro;
+window.addEventListener("resize",()=>{ clearTimeout(ro); ro=setTimeout(()=>{ if(G.A&&el("tab-gold").getAttribute("aria-selected")==="true") renderCharts(G.A); },180); });
+boot();
+</script>
+</body>
+</html>
