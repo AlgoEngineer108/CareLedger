@@ -1,0 +1,5 @@
+# Core pipeline
+pandas>=2.0
+
+# Optional: write each layer as parquet instead of CSV
+# pyarrow>=14.0

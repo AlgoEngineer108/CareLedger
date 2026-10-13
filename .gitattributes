@@ -1,0 +1,6 @@
+# The language breakdown should reflect the project's code, which is the Python
+# pipeline. The dashboard is a single-file presentation layer and the CSVs are
+# source data, so neither is counted as a language.
+dashboard/index.html linguist-documentation
+datasets/** linguist-generated
+output/** linguist-generated
